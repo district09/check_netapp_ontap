@@ -10,7 +10,7 @@ Known Issues:
 Project Status:  
 Working - Beta
 
-Patch Notes: 
+Patch Notes:  
 v0.6
 - No longer stands in defiance of the laws of mathematics by attempting to divide by 0 when calculating disk health. (Thanks HW)
 - No longer attempts to monitor a volume that is being moved or provisioned. (Thanks HW)
@@ -18,7 +18,7 @@ v0.6
 
 v0.5
 - *NEW* Quota monitoring (Warning: Completely untested and experimental. )
-- *NEW* The new –n parameter allows you to filter the queries to only get information from a specific vhost or cluster node depending on the check, use the -–help parameter to get a list of which checks are filtered to which objects.
+- *NEW* The new ï¿½n parameter allows you to filter the queries to only get information from a specific vhost or cluster node depending on the check, use the -ï¿½help parameter to get a list of which checks are filtered to which objects.
 - check_netapp_ontapi.pl is now compatible with SDK 5.2 and hopefully OnTap 8.2.
 - significant changes have been made to snapmirror monitoring so that it now works as intended.
 - Physical port monitoring and vhost interface monitoring are now separate checks and can be accessed with check_port and check_interface respectively.
