@@ -106,7 +106,7 @@ node: The node option restricts this check by vserver name.
 netapp_alarms  
 desc: Check for Netapp console alarms.  
 thresh: N/A not customizable.  
-ode: The node option restricts this check by cluster-node name.  
+node: The node option restricts this check by cluster-node name.  
 
 cluster_health  
 desc: Check the cluster disks for failure or other potentially undesirable states.  
