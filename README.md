@@ -42,7 +42,7 @@ Usage:
 3. Copy check_netapp_ontapi.pl script to your nagios libexec folder.
 
 --hostname, -H  
-Hostname or address of the cluster administrative interface. 
+Hostname or address of the cluster administrative interface.  
 --node, -n  
 Name of a vhost or cluster-node to restrict this query to.   
 --user, -u  
