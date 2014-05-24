@@ -5,7 +5,7 @@ Download:
 https://github.com/jsmroshamboot/NACMP/archive/master.zip
 
 Known Issues:  
-- Snapshot and Volume monitoring may not work on large clusters due to execution time.
+None  
 
 Project Status:  
 Working - Beta
