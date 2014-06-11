@@ -1,16 +1,24 @@
 Description:  
-A health monitoring script for Netapp Cluster-Mode filers.
+A health monitoring script for NetApp Data ONTAP Cluster-Mode filers.
 
 Download:  
-https://github.com/jsmroshamboot/NACMP/archive/master.zip
+https://github.com/willemdh/check_netapp_ontapi
 
 Known Issues:  
-None  
+- Quota_health not working like it should. Needs more testing..
+- Exclude and include issues with quotas. Needs more testing.. 
 
 Project Status:  
 Working - Beta
 
 Patch Notes:  
+0.8.6.11
+- Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude error) in calc_quota_health sub
+- Updated script header and documentation
+- Added if(defined..) to sub get_volume_space, because volumes in transferring mode for a syncing mirror, were causing errors
+- Added if(defined..) to sub calc_space_health, because offline aggregates were reported to cause errors
+- Updated code for quota_health, so correct sub is called atm
+
 v0.6
 - No longer stands in defiance of the laws of mathematics by attempting to divide by 0 when calculating disk health. (Thanks HW)
 - No longer attempts to monitor a volume that is being moved or provisioned. (Thanks HW)
@@ -39,7 +47,7 @@ v0.1:
 Usage:  
 1. Extract the contents of check_netapp_ontapi.zip to a temp directory and then navigate to it.  
 2. Copy the contents of NetApp/* to your /usr/lib/perl5 directory to install the required version of the NetApp Perl SDK.  
-3. Copy check_netapp_ontapi.pl script to your nagios libexec folder.
+3. Copy check_netapp_ontapi.pl script to your nagios libexec folder and set the correct permissions
 
 --hostname, -H  
 Hostname or address of the cluster administrative interface.  

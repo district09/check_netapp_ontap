@@ -1,5 +1,22 @@
 #!/usr/bin/perl
 
+# Script name:			check_netapp_ontapi.pl
+# Version:				0.8.6.6
+# Original author:		Murphy John
+# Current developer: 	D'Haese Willem
+# Purpose: 				Checks NetApp ontapi clusters for various problems, like volume, aggregate, snapshot, 
+#						quota, snapmirror, filer hardware, port, interface, cluster and disk health, but also NetApp alarms
+# On Github:			https://github.com/willemdh/check_netapp_ontapi
+# To do:
+#	- Completing quota monitoring
+#   - Test and integrate quota inclusion and exclusion
+#   - Integrate performance data
+# History:
+#   05/06/2014 => Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
+#   06/06/2014 => Updated script header and documentation, further testing with thresholds 
+#	10/06/2014 => Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode for a syncing mirror, were causing errors
+#	11/06/2014 => Merged John's 0.6 script with my fork after accepting the transferred project
+
 use warnings;
 use strict;
 use NaServer;
@@ -624,39 +641,47 @@ sub calc_filer_hardware_health {
 ##############################################
 
 sub get_snapmirror_lag {
+	# Get snapmirror monitoring objects
 	my ($nahStorage, $strVHost) = @_;
+	# Set up variables to handle the API queries for snapmirror retrieval.
         my $nahSMIterator = NaElement->new("snapmirror-get-iter");
 	my $nahQuery = NaElement->new("query");
         my $nahSMInfo = NaElement->new("snapmirror-info");
         my $strActiveTag = "";
         my %hshSMHealth;
 
+	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
                 $nahSMIterator->child_add($nahQuery);
                 $nahQuery->child_add($nahSMInfo);
                 $nahSMInfo->child_add_string("destination-volume-node", $strVHost);
         }
 
+		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
                         $nahSMIterator->child_add_string("tag", $strActiveTag);
                 }
 
                 $nahSMIterator->child_add_string("max-records", 100);
+				# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahSMIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
+				# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
-
+		# Assign all the retrieved information to a hash 
 		foreach my $nahSM ($nahResponse->child_get("attributes-list")->children_get()) {
+			# Without snapmirror control plane v2 insufficient information is available to perform monitoring.
 			if ($nahSM->child_get_string("relationship-control-plane") eq "v2") {
 				my $strSMName = $nahSM->child_get_string("destination-volume-node") . "://" . $nahSM->child_get_string("destination-location");
                         	$hshSMHealth{$strSMName}{'source'} = $nahSM->child_get_string("source-location");
-
+				
+				# Values may not necessarily exist so assign them if they do.
 				if ($nahSM->child_get_string("is-healthy") eq "false") {
 					$hshSMHealth{$strSMName}{'health'} = $nahSM->child_get_string("unhealthy-reason");
 				}
@@ -672,6 +697,7 @@ sub get_snapmirror_lag {
 }
 
 sub calc_snapmirror_health {
+		# Work out which values have crossed the snapmirror thresholds defined by the user.
         my ($hrefSMInfo, $strWarning, $strCritical) = @_;
         my ($hrefWarnThresholds, $hrefCritThresholds) = snapmirror_threshold_converter($strWarning, $strCritical);
         my $intState = 0;
@@ -686,7 +712,6 @@ sub calc_snapmirror_health {
                         $intState = get_nagios_state($intState, 1);
 		}
 		
-		# Do lag check here
 		my $bProcess = 1;
 		if (defined($hrefCritThresholds->{'lag-time'}) && defined($hrefSMInfo->{$strSM}->{'lag'})) {
 			if ($hrefSMInfo->{$strSM}->{'lag'} > $hrefCritThresholds->{'lag-time'}) {
@@ -708,6 +733,7 @@ sub calc_snapmirror_health {
 		}
 	}
 
+	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
                 $strOutput = "OK - No problems found ($intObjectCount checked)";
         }
@@ -716,6 +742,7 @@ sub calc_snapmirror_health {
 }
 
 sub snapmirror_threshold_converter {
+	# Split the user input into a hash that's easy to compare with the values retrieved from the filers.
 	my ($strWarning, $strCritical) = @_;
         my (%hshWarnThresholds, %hshCritThresholds, @aryWarning, @aryCritical, @aryStringsTemp);
 
@@ -754,37 +781,45 @@ sub snapmirror_threshold_converter {
 ## QUOTA SPACE
 ##############################################
 sub get_quota_space {
+	# Get quota monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
+	# Set up variables to handle the API queries for quota retrieval.
 	my $nahQuotaIterator = NaElement->new("quota-report-iter");
         my $nahQuery = NaElement->new("query");
         my $nahQuotaInfo = NaElement->new("quota");
         my $strActiveTag = "";
         my %hshQuotaUsage;
 
+		# Narrow search to only the requested node if configured by user with the -n option
         if (defined($strVHost)) {
                 $nahQuotaIterator->child_add($nahQuery);
                 $nahQuery->child_add($nahQuotaInfo);
                 $nahQuotaInfo->child_add_string("vserver", $strVHost);
         }
 
+		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
                         $nahQuotaIterator->child_add_string("tag", $strActiveTag);
                 }
 
-                $nahQuotaIterator->child_add_string("max-records", 100);
+                $nahQuotaIterator->child_add_string("max-records", 200);
+				# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahQuotaIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
+				# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
+				# Assign all the retrieved information to a hash 
                 foreach my $nahQuota ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strQuotaName = $nahQuota->child_get_string("vserver") . "/" . $nahQuota->child_get_string("volume");
 
+			# Alter name to include the tree path if the object has a tree path.
 			if ($nahQuota->child_get_string("tree") ne "") {
 				$strQuotaName = $strQuotaName . "/" . $nahQuota->child_get_string("tree");
 			}
@@ -796,43 +831,49 @@ sub get_quota_space {
 			$hshQuotaUsage{$strQuotaName}{'files-hard-limit'} = $nahQuota->child_get_string("file-limit");
 			$hshQuotaUsage{$strQuotaName}{'files-soft-limit'} = $nahQuota->child_get_string("soft-file-limit");
 			$hshQuotaUsage{$strQuotaName}{'files-used'} = $nahQuota->child_get_string("files-used");
+			
 		}
 	}
-
 	return \%hshQuotaUsage;
 }
 
 sub calc_quota_health {
+	# Work out which values have crossed the quota thresholds defined on the filer.
 	my $hrefQuotaInfo = shift;
 	my $intState = 0;
-        my $intObjectCount = 0;
-        my $strOutput;
+    my $intObjectCount = 0;
+    my $strOutput;
 
-        foreach my $strQuota (keys %$hrefQuotaInfo) {
-                $intObjectCount = $intObjectCount + 1;
-		my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
+	# Iterate through each of the objects and test the values, then set the Nagios state information as necessary.
+    foreach my $strQuota (keys %$hrefQuotaInfo) {
+    	$intObjectCount = $intObjectCount + 1;
+	#	my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
+		my $intUsedToBytes = $hrefQuotaInfo->{$strQuota}->{'space-used'}*1024;
 		my $strReadableUsed = space_to_human_readable($intUsedToBytes);
 
 		if ($hrefQuotaInfo->{$strQuota}->{'space-hard-limit'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-hard-limit'}) {
-				my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-hard-limit'});
-                		my $strReadableThresh = space_to_human_readable($intThreshToBytes);
+				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-hard-limit'});
+				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-hard-limit'}*1024;
+                my $strReadableThresh = space_to_human_readable($intThreshToBytes);
 				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                $intState = get_nagios_state($intState, 2);
+                $intState = get_nagios_state($intState, 2);
 			}
 		} elsif ($hrefQuotaInfo->{$strQuota}->{'space-threshold'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-threshold'}) {
-				my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-threshold'});
-                                my $strReadableThresh = space_to_human_readable($intThreshToBytes);
+				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-threshold'});
+				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-threshold'}*1024;
+                my $strReadableThresh = space_to_human_readable($intThreshToBytes);
 				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                $intState = get_nagios_state($intState, 2);
+                $intState = get_nagios_state($intState, 2);
                         }
 		} elsif ($hrefQuotaInfo->{$strQuota}->{'space-soft-limit'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-soft-limit'}) {
-				my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-soft-limit'});
-                                my $strReadableThresh = space_to_human_readable($intThreshToBytes);
+				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-soft-limit'});
+				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-soft-limit'}*1024;
+                my $strReadableThresh = space_to_human_readable($intThreshToBytes);
 				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
                                 $intState = get_nagios_state($intState, 1);
@@ -852,8 +893,10 @@ sub calc_quota_health {
                                 $intState = get_nagios_state($intState, 1);
                         }
 		}
+
 	}
 	
+	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
                 $strOutput = "OK - No problems found ($intObjectCount checked)";
         }
@@ -866,7 +909,9 @@ sub calc_quota_health {
 ##############################################
 
 sub get_aggregate_space {
+	# Get aggregate monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
+	# Set up variables to handle the API queries for aggregate retrieval.
         my $nahAggIterator = NaElement->new("aggr-get-iter");
 	my $nahQuery = NaElement->new("query");
         my $nahAggInfo = NaElement->new("aggr-attributes");
@@ -874,6 +919,7 @@ sub get_aggregate_space {
         my $strActiveTag = "";
         my %hshAggUsage;
 
+	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
                 $nahAggIterator->child_add($nahQuery);
                 $nahQuery->child_add($nahAggInfo);
@@ -881,21 +927,25 @@ sub get_aggregate_space {
                 $nahAggIdInfo->child_add_string("home-name", $strVHost);
         }
 
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
                         $nahAggIterator->child_add_string("tag", $strActiveTag);
                 }
 
                 $nahAggIterator->child_add_string("max-records", 100);
+				# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahAggIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
+				# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
+				# Assign all the retrieved information to a hash 
                 foreach my $nahAgg ($nahResponse->child_get("attributes-list")->children_get()) {
                         my $strAggName = $nahAgg->child_get_string("aggregate-name");
                         my $strAggOwner = $nahAgg->child_get("aggr-ownership-attributes")->child_get_string("home-name");
@@ -923,7 +973,9 @@ sub get_aggregate_space {
 ##############################################
 
 sub get_snap_space {
+	# Get snapshot monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
+	# Set up variables to handle the API queries for snapshot retrieval.
         my $nahVolIterator = NaElement->new("volume-get-iter");
 	my $nahQuery = NaElement->new("query");
         my $nahVolInfo = NaElement->new("volume-attributes");
@@ -931,6 +983,7 @@ sub get_snap_space {
         my $strActiveTag = "";
         my %hshVolUsage;
 
+	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
                 $nahVolIterator->child_add($nahQuery);
                 $nahQuery->child_add($nahVolInfo);
@@ -938,27 +991,32 @@ sub get_snap_space {
                 $nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
         }
 
+		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
                         $nahVolIterator->child_add_string("tag", $strActiveTag);
                 }
 
                 $nahVolIterator->child_add_string("max-records", 100);
+				# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahVolIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
+				# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
+				# Assign all the retrieved information to a hash 
                 foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
                         my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
                         my $strVolOwner = $nahVol->child_get("volume-id-attributes")->child_get_string("owning-vserver-name");
                         $strVolName = $strVolOwner . "/" . $strVolName;
 
+						# Don't monitor a volume that is currently being moved as it will result in errors.
 			if ($nahVol->child_get("volume-state-attributes")->child_get_string("is-moving") eq "true") {
                                 next;
                         }
@@ -983,7 +1041,9 @@ sub get_snap_space {
 ##############################################
 
 sub get_volume_space {
+	# Get volume monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
+	# Set up variables to handle the API queries for volume retrieval.
 	my $nahVolIterator = NaElement->new("volume-get-iter");
 	my $nahQuery = NaElement->new("query");
 	my $nahVolInfo = NaElement->new("volume-attributes");
@@ -991,6 +1051,7 @@ sub get_volume_space {
 	my $strActiveTag = "";
 	my %hshVolUsage;
 
+	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
 		$nahVolIterator->child_add($nahQuery);
 		$nahQuery->child_add($nahVolInfo);
@@ -998,29 +1059,35 @@ sub get_volume_space {
 		$nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
 	}
 	
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
                         $nahVolIterator->child_add_string("tag", $strActiveTag);
                 }
 		
 		$nahVolIterator->child_add_string("max-records", 100);
+		# Invoke the request.
 		my $nahResponse = $nahStorage->invoke_elem($nahVolIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
 		$strActiveTag = $nahResponse->child_get_string("next-tag");
-
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
+		# Assign all the retrieved information to a hash 
 		foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
 			my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
 			my $strVolOwner = $nahVol->child_get("volume-id-attributes")->child_get_string("owning-vserver-name");
 			$strVolName = $strVolOwner . "/" . $strVolName;
 
-			if ($nahVol->child_get("volume-state-attributes")->child_get_string("is-moving") eq "true") {
-				next;
+			# Don't monitor a volume that is currently being moved as it will result in errors.
+			if (defined($nahVol->child_get("volume-state-attributes")->child_get_string("is-moving"))) {
+				if ($nahVol->child_get("volume-state-attributes")->child_get_string("is-moving") eq "true") {
+					next;
+				}
 			}
 
 			if ($nahVol->child_get("volume-state-attributes")->child_get_string("state") ne "online") {
@@ -1043,37 +1110,38 @@ sub get_volume_space {
 ##############################################
 
 sub calc_space_health {
-        my ($hrefSpaceInfo, $strWarning, $strCritical) = @_;
-        my ($hrefWarnThresholds, $hrefCritThresholds) = space_threshold_converter($strWarning, $strCritical);
-        my $intState = 0;
+	# This function controls the logic flow for determining the state of space checks.
+	my ($hrefSpaceInfo, $strWarning, $strCritical) = @_;
+	my ($hrefWarnThresholds, $hrefCritThresholds) = space_threshold_converter($strWarning, $strCritical);
+	my $intState = 0;
 	my $intObjectCount = 0;
-        my $strOutput;
-        my $hrefObjectState;
+	my $strOutput;
+	my $hrefObjectState;
 
-        foreach my $strObj (keys %$hrefSpaceInfo) {
+	foreach my $strObj (keys %$hrefSpaceInfo) {
 		$intObjectCount = $intObjectCount + 1;
-
-		if ($hrefSpaceInfo->{$strObj}->{'space-total'} == 0) {
-			next;
+		# Don't check an object that has no space or is offline.
+		if (defined($hrefSpaceInfo->{$strObj}->{'space-total'})) {
+			if ($hrefSpaceInfo->{$strObj}->{'space-total'} == 0) {
+				next;
+			}
 		}
-			
-                if ($hrefSpaceInfo->{$strObj}->{'state'} ne "online") {
-                        if (defined($hrefCritThresholds->{'strings'}) || defined($hrefWarnThresholds->{'strings'})) {
+		# If the monitored object is not online then test to see if it matches a user defined bad state.
+		if ($hrefSpaceInfo->{$strObj}->{'state'} ne "online") {
+			if (defined($hrefCritThresholds->{'strings'}) || defined($hrefWarnThresholds->{'strings'})) {
 				my $bObjectRemoved = 0;
 				foreach my $strStateThresh (@{$hrefCritThresholds->{'strings'}}) {
 					if ($hrefSpaceInfo->{$strObj}->{'state'} eq $strStateThresh) {
 						my $strNewMessage = $strObj . " is " . $strStateThresh;
 						$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                		$intState = get_nagios_state($intState, 2);
+						$intState = get_nagios_state($intState, 2);
 						delete($hrefSpaceInfo->{$strObj});
 						$bObjectRemoved = 1;
 					}
 				}
-
 				if ($bObjectRemoved) {
 					next;
 				}
-
 				foreach my $strStateThresh (@{$hrefWarnThresholds->{'strings'}}) {
                                         if ($hrefSpaceInfo->{$strObj}->{'state'} eq $strStateThresh) {
                                                 my $strNewMessage = $strObj . " is " . $strStateThresh;
@@ -1086,7 +1154,8 @@ sub calc_space_health {
                                 delete($hrefSpaceInfo->{$strObj});
                         }
                 }
-
+		
+		# Test to see if the monitored object is on it's home node and raise an alert if it is not.
 		if (defined($hrefSpaceInfo->{$strObj}->{'home-owner'}) && defined($hrefSpaceInfo->{$strObj}->{'current-owner'})) {
 			if ($hrefSpaceInfo->{$strObj}->{'home-owner'} ne $hrefSpaceInfo->{$strObj}->{'current-owner'}) {
 				if ($hrefCritThresholds->{'owner'}) {
@@ -1102,9 +1171,11 @@ sub calc_space_health {
 		}
         }
 
+		# Test to see if the monitored object has crossed a defined space threshhold.
         ($intState, $strOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
         ($intState, $strOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
 
+		# If everything looks ok and no output has been defined then set the message to display OK.
         if (!(defined($strOutput))) {
                 $strOutput = "OK - No problems found ($intObjectCount checked)";
         }
@@ -1113,12 +1184,15 @@ sub calc_space_health {
 }
 
 sub space_threshold_helper {
+	# Test the various monitored object values against the thresholds provided by the user.
 	my ($intState, $strOutput, $hrefVolInfo, $hrefThresholds, $intAlertLevel) = @_;
 
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
 
+		# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
 		if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
+			# Prepare certain variables pre-check to reduce code duplication.
 			my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
                         $intUsedPercent = floor($intUsedPercent + 0.5);
                         my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
@@ -1201,6 +1275,7 @@ sub space_threshold_helper {
 			}
 		}
 		
+		# Remove problems from list so that it's not altered by further monitoring (I.e. warnings overwriting critical problems)
 		if ($bMarkedForRemoval) {
 			delete($hrefVolInfo->{$strVol});
 		}
@@ -1210,6 +1285,7 @@ sub space_threshold_helper {
 }
 
 sub space_threshold_converter {
+	# Determine what thresholds have been provided by the user for space monitoring.
         my ($strWarning, $strCritical) = @_;
         my (%hshWarnThresholds, %hshCritThresholds, @aryWarning, @aryCritical, @aryStringsTemp);
 
@@ -1224,6 +1300,7 @@ sub space_threshold_converter {
 	$hshWarnThresholds{'owner'} = 0;
 	$hshCritThresholds{'owner'} = 0;
 
+	# Use regex to match the various possible values for space monitoring and assign the values to the relevant hash element.
         foreach my $strWarnThresh (@aryWarning) {
                 if ($strWarnThresh =~ m/^[0-9]*\%$/) {
                         $hshWarnThresholds{'space-percent'} = $strWarnThresh;
@@ -1242,9 +1319,11 @@ sub space_threshold_converter {
                 }
         }
 
+	# Push an array of invalid states for the monitored object to be in to the threshold hash if any have been defined.
 	$hshWarnThresholds{'strings'} = [@aryStringsTemp];
 	undef(@aryStringsTemp);
 
+	# Use regex to match the various possible values for space monitoring and assign the values to the relevant hash element.
         foreach my $strCritThresh (@aryCritical) {
                 if ($strCritThresh =~ m/^[0-9]*\%$/) {
                         $hshCritThresholds{'space-percent'} = $strCritThresh;
@@ -1263,11 +1342,13 @@ sub space_threshold_converter {
                 }
         }
 
+	# Push an array of invalid states for the monitored object to be in to the threshold hash if any have been defined.
 	$hshCritThresholds{'strings'} = [@aryStringsTemp];
         return \%hshWarnThresholds, \%hshCritThresholds;
 }
 
 sub space_to_bytes {
+		# Convert human readable magnitude to bytes.
         my $strInput = shift;
         $strInput =~ m/([0-9]*)([KMGT]?B)/;
         my $intValue = $1;
@@ -1290,6 +1371,7 @@ sub space_to_bytes {
 }
 
 sub space_to_human_readable {
+	# Convert bytes to human readable magnitude
 	my $intValue = shift;
 
         my @aryStrings = ("B","KB","MB","GB","TB");
@@ -1299,8 +1381,9 @@ sub space_to_human_readable {
                 $intValue = $intValue / 1024;
                 $intCount = $intCount + 1;
         }
-
-        my $strRoundedNumber = sprintf("%0.2f", $intValue) . $aryStrings[$intCount];
+		
+		# Round the output so that it's a whole value only.
+		my $strRoundedNumber = sprintf("%0.2f", $intValue) . $aryStrings[$intCount];
 
         return $strRoundedNumber;
 }
@@ -1310,6 +1393,7 @@ sub space_to_human_readable {
 ##############################################
 
 sub help {
+		# It helps :) I hope.
         my $strVersion = "v0.6 b190514";
         print "\ncheck_netapp_ontapi version: $strVersion\n";
         print "By John Murphy <john.murphy\@roshamboot.org>, GNU GPL License\n";
@@ -1397,7 +1481,10 @@ EOL
 }
 
 sub time_to_seconds {
+	# Convert human readable time frame D H M S to seconds.
 	my $strInput = shift;
+	
+	# Use regex back references to seperate the value from the magnitude.
 	$strInput =~ m/([0-9]*)([smhd])/;
         my $intValue = $1;
         my $strMagnitude = $2;
@@ -1419,6 +1506,7 @@ sub time_to_seconds {
 }
 
 sub seconds_to_time {
+	# Convert seconds to human readable time frame D H M S
 	my $intSecondsIn = shift;
         my $intDays = int($intSecondsIn / 86400);
         $intSecondsIn = $intSecondsIn - ($intDays * 86400);
@@ -1437,6 +1525,7 @@ sub seconds_to_time {
 }
 
 sub get_nagios_description {
+	# Helper function to concatenate output messages
 	my ($strOutput, $strNewMessage) = @_; 
 	if (!(defined($strOutput))) {
 		$strOutput = $strNewMessage;
@@ -1448,6 +1537,7 @@ sub get_nagios_description {
 }
 
 sub get_nagios_state {
+	# Helper function to change the state only if the new state is worse than the last one provided.
 	my ($intState, $intNewState) = @_;
 	if ($intNewState > $intState) {
 		$intState = $intNewState;
@@ -1458,7 +1548,8 @@ sub get_nagios_state {
 
 sub validate_ontapi_response {
         my ($nahResponse, $strMessage) = @_;
-
+		
+		# Validate the response from the API to ensure that it doesn't contain any errors and if it does fail gracefully.
         if (ref($nahResponse) eq "NaElement" && $nahResponse->results_errno != 0) {
                 my $strResponse = $nahResponse->results_reason();
                 print $strMessage . $strResponse . "\n";
@@ -1473,11 +1564,14 @@ sub validate_ontapi_response {
 }
 
 sub filter_object {
+	# Take the user input and put it into an array and slice of the first array element which should contain the filtering type.
 	my ($hrefObjectsToFilter, $strModifier) = @_;
 	my @aryModifier = split(",",$strModifier);	
 	my $strProcType = shift @aryModifier;
 
+	# Perform inclusive or exclusive filtering depending on what the user requested.
 	if ($strProcType eq "exclude") {
+		# Remove every object from the monitoring list that contains the string provided by the user.
 		foreach my $strObject (keys %$hrefObjectsToFilter) { 
 			foreach my $strFilter (@aryModifier) {
 				if ($strObject =~ m/$strFilter/) {
@@ -1486,6 +1580,7 @@ sub filter_object {
 			}
 		}
 	} elsif ($strProcType eq "include") {
+		# Remove every object from the monitoring list that doesn't contain the string provided by the user.
 		foreach my $strObject (keys %$hrefObjectsToFilter) {
 			my $bRemove = 1;
 
@@ -1513,6 +1608,7 @@ sub filter_object {
 ##
 ##############################################
 
+# Declare and configure option selections
 my ($strHost, $strVHost, $strUser, $strPassword, $strOption, $strWarning, $strCritical, $strModifier);
 
 GetOptions("H=s" => \$strHost,                                  "hostname=s" => \$strHost,
@@ -1524,13 +1620,16 @@ GetOptions("H=s" => \$strHost,                                  "hostname=s" => 
            "c=s" => \$strCritical,            			"critical=s" => \$strCritical,
 	   "m=s" => \$strModifier, 				"modifier=s" => \$strModifier);
 
+# Print help if a required field is not entered or if help is requested.
 if (!($strHost || $strUser || $strPassword || $strOption)) {
 	print "A required option is not set!\n";
         help();
 }
 
+# Convert to lowercase to prevented unexpected things happening while trying to match the option.
 $strOption = lc($strOption);
 
+# Create the NetApp API handle and test that the connection works.
 my $nahStorage = NaServer->new($strHost, 1, 15);
 $nahStorage->set_style("LOGIN");
 $nahStorage->set_admin_user($strUser, $strPassword);
@@ -1538,22 +1637,30 @@ $nahStorage->set_transport_type("HTTP");
 my $nahResponse = $nahStorage->invoke("system-get-version");
 validate_ontapi_response($nahResponse, "Failed test query: ");
 
+# Test that the filer is running in clustered mode instead of 7-Mode, exit if it is not.
 if (!($nahResponse->child_get_string("is-clustered"))) {
         print "This plugin only works for Cluster-Mode your filers are running in 7-Mode.\n";
         exit 3;
 }
 
+# Declare output variables.
 my ($intState, $strOutput);
 
+# Select the requested option and run the necessary function to calculate its health.
+# Note: I've just commented the first option as they are all the same in terms of process order.
 if ($strOption eq "volume_health") {
 	# * COMPLETE % TESTED
 	# Space used, Inode used, offline
+	
+	# Request the information required to calculate the health of the related object from the filer. 
 	my $hrefVolInfo = get_volume_space($nahStorage, $strVHost);
 
+	# If a modifier has been applied to the users request then filter out the unrequired objects.
 	if (defined($strModifier)) {
 		$hrefVolInfo = filter_object($hrefVolInfo, $strModifier);
 	}
 
+	# Calculate the resulting health of the retrieved objects based on the metrics provided by the user (or in some cases the pre-defined metrics in the script).
 	($intState, $strOutput) = calc_space_health($hrefVolInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "aggregate_health") {
 	# * COMPLETE % TESTED
@@ -1584,7 +1691,7 @@ if ($strOption eq "volume_health") {
                 $hrefQuotaInfo = filter_object($hrefQuotaInfo, $strModifier);
         }
 
-        ($intState, $strOutput) = calc_space_health($hrefQuotaInfo, $strWarning, $strCritical);
+        ($intState, $strOutput) = calc_quota_health($hrefQuotaInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "snapmirror_health") {
 	# * COMPLETE % TESTED
 	# Snapmirror lag time, health
@@ -1666,6 +1773,7 @@ if ($strOption eq "volume_health") {
 ## FUTURE STUFF----
 # DISK IO, DE-DUPE LAG
 
+# Print the output and exit with the resulting state.
 $strOutput .= "\n";
 print $strOutput;
 exit $intState; 
