@@ -1017,7 +1017,8 @@ sub get_snap_space {
                         $strVolName = $strVolOwner . "/" . $strVolName;
 
 						# Don't monitor a volume that is currently being moved as it will result in errors.
-			if ($nahVol->child_get("volume-state-attributes")->child_get_string("is-moving") eq "true") {
+                        if (defined($nahVol->child_get("volume-state-attributes")->child_get_string("is-moving")) &&
+                            $nahVol->child_get("volume-state-attributes")->child_get_string("is-moving") eq "true") {
                                 next;
                         }
 
