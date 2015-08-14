@@ -985,6 +985,7 @@ sub get_snap_space {
 	my $nahQuery = NaElement->new("query");
         my $nahVolInfo = NaElement->new("volume-attributes");
         my $nahVolIdInfo = NaElement->new("volume-id-attributes");
+        my $nahTag = NaElement->new("tag");
         my $strActiveTag = "";
         my %hshVolUsage;
 
@@ -997,12 +998,13 @@ sub get_snap_space {
         }
 
 		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+        $nahVolIterator->child_add_string("max-records", 100);
+        $nahVolIterator->child_add($nahTag);
         while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
-                        $nahVolIterator->child_add_string("tag", $strActiveTag);
+                    $nahTag->set_content($strActiveTag);
                 }
 
-                $nahVolIterator->child_add_string("max-records", 100);
 				# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahVolIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
@@ -1054,6 +1056,7 @@ sub get_volume_space {
 	my $nahQuery = NaElement->new("query");
 	my $nahVolInfo = NaElement->new("volume-attributes");
 	my $nahVolIdInfo = NaElement->new("volume-id-attributes");
+    my $nahTag = NaElement->new("tag");
 	my $strActiveTag = "";
 	my %hshVolUsage;
 
@@ -1066,10 +1069,12 @@ sub get_volume_space {
 	}
 	
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+    $nahVolIterator->child_add_string("max-records", 100);
+    $nahVolIterator->child_add($nahTag);
 	while(defined($strActiveTag)) {
-		if ($strActiveTag ne "") {
-                        $nahVolIterator->child_add_string("tag", $strActiveTag);
-                }
+        if ($strActiveTag ne "") {
+            $nahTag->set_content($strActiveTag);
+        }
 		
 		$nahVolIterator->child_add_string("max-records", 100);
 		# Invoke the request.
