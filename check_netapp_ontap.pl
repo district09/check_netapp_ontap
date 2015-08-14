@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # Script name:		check_netapp_ontap.pl
-# Version:			v2.5.10
+# Version:			v2.06.150814
 # Original author:	Murphy John
 # Current author: 	D'Haese Willem
 # Purpose: 			Checks NetApp ontapi clusters for various problems, like volume, aggregate, snapshot, 
@@ -9,11 +9,12 @@
 # On Github:		https://github.com/willemdh/check_netapp_ontap
 # On OutsideIT:		http://outsideit.net/check-netapp-ontap
 # Recent History:
-#   05/06/2014 => Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
+
 #   06/06/2014 => Updated script header and documentation, further testing with thresholds 
 #	10/06/2014 => Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode for a syncing mirror, were causing errors
 #	11/06/2014 => Merged John's 0.6 script with my fork after accepting the transferred project
 #	10/05/2015 => Cleanup script documentation and merged pull request from Waipeng
+#	14/08/2015 => Added perfdata for aggregates, volumes and snapshots (Chris House)
 # Copyright:
 #	This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
 #	by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed 
@@ -1121,6 +1122,7 @@ sub calc_space_health {
 	my $intState = 0;
 	my $intObjectCount = 0;
 	my $strOutput;
+        my $perfOutput;
 	my $hrefObjectState;
 
 	foreach my $strObj (keys %$hrefSpaceInfo) {
@@ -1177,13 +1179,21 @@ sub calc_space_health {
         }
 
 		# Test to see if the monitored object has crossed a defined space threshhold.
-        ($intState, $strOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
-        ($intState, $strOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
+        ($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
+        ($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
+
+        
 
 		# If everything looks ok and no output has been defined then set the message to display OK.
         if (!(defined($strOutput))) {
                 $strOutput = "OK - No problems found ($intObjectCount checked)";
         }
+
+        if ((defined($perfOutput))) {
+                $strOutput .= $perfOutput;
+        }
+
+ 
 
         return $intState, $strOutput;
 }
@@ -1191,6 +1201,9 @@ sub calc_space_health {
 sub space_threshold_helper {
 	# Test the various monitored object values against the thresholds provided by the user.
 	my ($intState, $strOutput, $hrefVolInfo, $hrefThresholds, $intAlertLevel) = @_;
+
+	my $perfOutput = "";
+        my $perfOutputFinal = " | ";
 
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
@@ -1204,6 +1217,13 @@ sub space_threshold_helper {
             	my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
             	my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
             	my $strNewMessage = $strVol . " - " . $strReadableUsed . "/" . $strReadableTotal . " (" . $intUsedPercent . "%) SPACE USED";
+
+            	if ($intAlertLevel == 1) {
+	            	$perfOutput .= "'" . $strVol . "_used'=" . $hrefVolInfo->{$strVol}->{'space-used'} . "B ";
+
+		        	my $spaceFree = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
+		        	$perfOutput .= "'" . $strVol . "_free'=" . $spaceFree . "B ";
+		        }
 			
 			
 			if (defined($hrefThresholds->{'space-percent'}) && defined($hrefThresholds->{'space-count'})) {
@@ -1246,8 +1266,15 @@ sub space_threshold_helper {
 
 		if (defined($hrefThresholds->{'inodes-percent'}) || defined($hrefThresholds->{'inodes-count'})) {	
 			my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'inodes-used'} / $hrefVolInfo->{$strVol}->{'inodes-total'}) * 100;
-                                $intUsedPercent = floor($intUsedPercent + 0.5);
-                                my $strNewMessage = $strVol . " - " . $hrefVolInfo->{$strVol}->{'inodes-used'} . "/" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " (" . $intUsedPercent . "%) INODES USED";
+            $intUsedPercent = floor($intUsedPercent + 0.5);
+            my $strNewMessage = $strVol . " - " . $hrefVolInfo->{$strVol}->{'inodes-used'} . "/" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " (" . $intUsedPercent . "%) INODES USED";
+
+            if ($intAlertLevel == 1) {
+	            $perfOutput .= "'" . $strVol . "_inodes_used'=" . $hrefVolInfo->{$strVol}->{'inodes-used'} . "B ";
+
+	        	my $inodesFree = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
+	        	$perfOutput .= "'" . $strVol . "_inodes_free'=" . $inodesFree;
+        	}
 
 			if (defined($hrefThresholds->{'inodes-percent'}) && defined($hrefThresholds->{'inodes-count'})) {
 				my $intPercentInInodes = $hrefVolInfo->{$strVol}->{'inodes-total'} * ($hrefThresholds->{'inodes-percent'}/100);
@@ -1289,7 +1316,12 @@ sub space_threshold_helper {
 		}
 	}
 
-	return $intState, $strOutput, $hrefVolInfo;
+	if ($intAlertLevel == 1) {
+		#print "perfOutput: " . $perfOutput . "\n";
+		$perfOutputFinal .= $perfOutput;
+	}
+
+	return $intState, $strOutput, $perfOutputFinal, $hrefVolInfo;
 }
 
 sub space_threshold_converter {
@@ -1669,6 +1701,14 @@ if ($strOption eq "volume_health") {
 	}
 
 	# Calculate the resulting health of the retrieved objects based on the metrics provided by the user (or in some cases the pre-defined metrics in the script).
+        if (!(defined($strWarning))) {
+                $strWarning="80%";
+        }
+
+        if (!(defined($strWarning))) {
+                $strWarning="95%";
+        }
+
 	($intState, $strOutput) = calc_space_health($hrefVolInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "aggregate_health") {
 	# * COMPLETE % TESTED
@@ -1679,6 +1719,13 @@ if ($strOption eq "volume_health") {
                 $hrefAggInfo = filter_object($hrefAggInfo, $strModifier);
         }
 
+        if (!(defined($strWarning))) {
+                $strWarning="80%";
+        }
+
+        if (!(defined($strWarning))) {
+                $strWarning="95%";
+        }
 	($intState, $strOutput) = calc_space_health($hrefAggInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "snapshot_health") {
 	# * COMPLETE % TESTED
@@ -1689,6 +1736,13 @@ if ($strOption eq "volume_health") {
                 $hrefSnapInfo = filter_object($hrefSnapInfo, $strModifier);
         }
 
+        if (!(defined($strWarning))) {
+                $strWarning="80%";
+        }
+
+        if (!(defined($strWarning))) {
+                $strWarning="95%";
+        }
         ($intState, $strOutput) = calc_space_health($hrefSnapInfo, $strWarning, $strCritical);
 }  elsif ($strOption eq "quota_health") {
         # * COMPLETE
@@ -1699,6 +1753,13 @@ if ($strOption eq "volume_health") {
                 $hrefQuotaInfo = filter_object($hrefQuotaInfo, $strModifier);
         }
 
+        if (!(defined($strWarning))) {
+                $strWarning="80%";
+        }
+
+        if (!(defined($strWarning))) {
+                $strWarning="95%";
+        }
         ($intState, $strOutput) = calc_quota_health($hrefQuotaInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "snapmirror_health") {
 	# * COMPLETE % TESTED
