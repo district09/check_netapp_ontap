@@ -9,8 +9,8 @@
 # On Github:        https://github.com/willemdh/check_netapp_ontap
 # On OutsideIT:     http://outsideit.net/check-netapp-ontap
 # Recent History:
-#   05/06/14 => Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
-#   06/06/14 => Updated script header and documentation, further testing with thresholds 
+#	05/06/14 => Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
+#	06/06/14 => Updated script header and documentation, further testing with thresholds 
 #	10/06/14 => Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode for a syncing mirror, were causing errors
 #	11/06/14 => Merged John's 0.6 script with my fork after accepting the transferred project
 #	10/05/15 => Cleanup script documentation and merged pull request from Waipeng
