@@ -1101,6 +1101,11 @@ sub get_volume_space {
 				}
 			}
 
+			# Don't check volumes with type TMP (7-Mode Transition Tool)
+			if ($nahVol->child_get("volume-id-attributes")->child_get_string("type") eq "tmp") {
+				next;
+			}
+
 			if ($nahVol->child_get("volume-state-attributes")->child_get_string("state") ne "online") {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 			} else {
