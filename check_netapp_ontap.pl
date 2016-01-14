@@ -1017,6 +1017,8 @@ sub get_snap_space {
 
 				# Assign all the retrieved information to a hash 
                 foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
+			# Don't check undefined objects (7-Mode Transition Tool objects are concerned)
+			next unless defined($nahVol->child_get("volume-state-attributes")->child_get_string("state"));
 
                         my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
                         my $strVolOwner = $nahVol->child_get("volume-id-attributes")->child_get_string("owning-vserver-name");
@@ -1130,6 +1132,10 @@ sub calc_space_health {
 
 	foreach my $strObj (keys %$hrefSpaceInfo) {
 		$intObjectCount = $intObjectCount + 1;
+
+		# Don't check undefined objects (7-Mode Transition Tool objects are concerned)
+		next unless defined($hrefSpaceInfo->{$strObj}->{'state'});
+
 		# Don't check an object that has no space or is offline.
 		if (defined($hrefSpaceInfo->{$strObj}->{'space-total'})) {
 			if ($hrefSpaceInfo->{$strObj}->{'space-total'} == 0) {
@@ -1199,6 +1205,10 @@ sub space_threshold_helper {
 
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
+
+		# Don't check undefined objects (7-Mode Transition Tool objects are concerned)
+		next unless defined($hrefVolInfo->{$strVol}->{'space-used'});
+		next unless defined($hrefVolInfo->{$strVol}->{'space-total'});
 
 		# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
 		if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
