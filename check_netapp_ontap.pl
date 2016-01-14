@@ -1017,7 +1017,7 @@ sub get_snap_space {
 
 				# Assign all the retrieved information to a hash 
                 foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
-			# Don't check undefined objects (7-Mode Transition Tool objects are concerned)
+			# Don't check undefined objects (7-Mode Transition Tool volumes with TMP type are concerned)
 			next unless defined($nahVol->child_get("volume-state-attributes")->child_get_string("state"));
 
                         my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
@@ -1133,7 +1133,7 @@ sub calc_space_health {
 	foreach my $strObj (keys %$hrefSpaceInfo) {
 		$intObjectCount = $intObjectCount + 1;
 
-		# Don't check undefined objects (7-Mode Transition Tool objects are concerned)
+		# Don't check undefined objects (7-Mode Transition Tool volumes with TMP type are concerned)
 		next unless defined($hrefSpaceInfo->{$strObj}->{'state'});
 
 		# Don't check an object that has no space or is offline.
@@ -1206,7 +1206,7 @@ sub space_threshold_helper {
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
 
-		# Don't check undefined objects (7-Mode Transition Tool objects are concerned)
+		# Don't check undefined objects (7-Mode Transition Tool volumes with TMP type are concerned)
 		next unless defined($hrefVolInfo->{$strVol}->{'space-used'});
 		next unless defined($hrefVolInfo->{$strVol}->{'space-total'});
 
