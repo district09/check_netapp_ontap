@@ -1029,7 +1029,7 @@ sub get_snap_space {
                                 next;
                         }
 
-			# Don't check volumes with type TMP (7-Mode Transition Tool)
+			# Don't check snapshots of volumes with type TMP (7-Mode Transition Tool)
 			if ($nahVol->child_get("volume-id-attributes")->child_get_string("type") eq "tmp") {
 				next;
 			}
