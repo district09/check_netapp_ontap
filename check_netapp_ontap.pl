@@ -651,6 +651,7 @@ sub get_snapmirror_lag {
         my $nahSMIterator = NaElement->new("snapmirror-get-iter");
 	my $nahQuery = NaElement->new("query");
         my $nahSMInfo = NaElement->new("snapmirror-info");
+        my $nahTag = NaElement->new("tag");
         my $strActiveTag = "";
         my %hshSMHealth;
 
@@ -662,12 +663,13 @@ sub get_snapmirror_lag {
         }
 
 		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+        $nahSMIterator->child_add_string("max-records", 100);
+        $nahSMIterator->child_add($nahTag);
         while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
-                        $nahSMIterator->child_add_string("tag", $strActiveTag);
+                        $nahTag->set_content($strActiveTag);
                 }
 
-                $nahSMIterator->child_add_string("max-records", 100);
 				# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahSMIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
