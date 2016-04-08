@@ -1040,7 +1040,7 @@ sub get_snap_space {
                                 $hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
                         } else {
                                 $hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
-                                $hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-available-for-snapshots");
+                                $hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("snapshot-reserve-size");
                                 $hshVolUsage{$strVolName}{'space-used'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-used-by-snapshots");
                                 $hshVolUsage{$strVolName}{'inodes-total'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-total");
                                 $hshVolUsage{$strVolName}{'inodes-used'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-used");
