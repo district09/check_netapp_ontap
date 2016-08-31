@@ -493,7 +493,6 @@ sub get_filer_hardware {
                 $nahNodeInfo->child_add_string("node", $strVHost);
         }
 
-
 	while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
                         $nahFilerIterator->child_add_string("tag", $strActiveTag);
@@ -663,7 +662,7 @@ sub get_snapmirror_lag {
                 $nahSMInfo->child_add_string("destination-volume-node", $strVHost);
         }
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         $nahSMIterator->child_add_string("max-records", 100);
         $nahSMIterator->child_add($nahTag);
         while(defined($strActiveTag)) {
@@ -671,16 +670,17 @@ sub get_snapmirror_lag {
                         $nahTag->set_content($strActiveTag);
                 }
 
-				# Invoke the request.
+		# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahSMIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
+
 		# Assign all the retrieved information to a hash 
 		foreach my $nahSM ($nahResponse->child_get("attributes-list")->children_get()) {
 			# Without snapmirror control plane v2 insufficient information is available to perform monitoring.
@@ -704,7 +704,7 @@ sub get_snapmirror_lag {
 }
 
 sub calc_snapmirror_health {
-		# Work out which values have crossed the snapmirror thresholds defined by the user.
+	# Work out which values have crossed the snapmirror thresholds defined by the user.
         my ($hrefSMInfo, $strWarning, $strCritical) = @_;
         my ($hrefWarnThresholds, $hrefCritThresholds) = snapmirror_threshold_converter($strWarning, $strCritical);
         my $intState = 0;
@@ -798,32 +798,33 @@ sub get_quota_space {
         my $strActiveTag = "";
         my %hshQuotaUsage;
 
-		# Narrow search to only the requested node if configured by user with the -n option
+	# Narrow search to only the requested node if configured by user with the -n option
         if (defined($strVHost)) {
                 $nahQuotaIterator->child_add($nahQuery);
                 $nahQuery->child_add($nahQuotaInfo);
                 $nahQuotaInfo->child_add_string("vserver", $strVHost);
         }
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
                         $nahQuotaIterator->child_add_string("tag", $strActiveTag);
                 }
 
                 $nahQuotaIterator->child_add_string("max-records", 200);
-				# Invoke the request.
+
+		# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahQuotaIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
-				# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash 
                 foreach my $nahQuota ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strQuotaName = $nahQuota->child_get_string("vserver") . "/" . $nahQuota->child_get_string("volume");
 
@@ -1008,18 +1009,18 @@ sub get_snap_space {
                     $nahTag->set_content($strActiveTag);
                 }
 
-				# Invoke the request.
+		# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahVolIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
-				# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash 
                 foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
                         my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
@@ -1081,7 +1082,7 @@ sub get_volume_space {
 	$nahVolIterator->child_add($nahTag);
 	while(defined($strActiveTag)) {
         if ($strActiveTag ne "") {
-            $nahTag->set_content($strActiveTag);
+        	$nahTag->set_content($strActiveTag);
         }
 		
 		$nahVolIterator->child_add_string("max-records", 100);
