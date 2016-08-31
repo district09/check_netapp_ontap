@@ -159,7 +159,7 @@ sub calc_disk_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
 	return $intState, $strOutput;
@@ -283,7 +283,7 @@ sub calc_spare_health {
 	}
 
 	if ($intState eq 0) {
-		$strOutput = "OK - No problems found ($intObjectCount checked)";
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
 	}
 
 	if (!(defined($strOutput))) {
@@ -427,7 +427,7 @@ sub calc_interface_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;
@@ -502,7 +502,7 @@ sub calc_cluster_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;	
@@ -598,7 +598,7 @@ sub calc_netapp_alarm_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;
@@ -763,7 +763,7 @@ sub calc_filer_hardware_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;
@@ -871,7 +871,7 @@ sub calc_snapmirror_health {
 
 	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
 	return $intState, $strOutput;
@@ -1036,7 +1036,7 @@ sub calc_quota_health {
 	
 	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;
@@ -1335,7 +1335,7 @@ sub calc_space_health {
 
 	# If everything looks ok and no output has been defined then set the message to display OK.
         if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         if ((defined($perfOutput))) {
