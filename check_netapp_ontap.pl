@@ -170,13 +170,13 @@ sub calc_disk_health {
 ##############################################
 
 sub get_spare_info {
-	my ($nahStorage, $strVHost) = @_;
-        my $nahSpareIterator = NaElement->new("storage-disk-get-iter");
+	my ($nahStorage, $strVHost, $strWarning, $strCritical) = @_;
+	my $nahSpareIterator = NaElement->new("storage-disk-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahSpareInfo = NaElement->new("storage-disk-info");
-        my $nahSpareOwnerInfo = NaElement->new("disk-ownership-info");
-        my $strActiveTag = "";
-        my %hshSpareInfo;
+	my $nahSpareInfo = NaElement->new("storage-disk-info");
+	my $nahSpareOwnerInfo = NaElement->new("disk-ownership-info");
+	my $strActiveTag = "";
+	my %hshSpareInfo;
 
 	if (defined($strVHost)) {
                 $nahSpareIterator->child_add($nahQuery);
@@ -258,9 +258,9 @@ sub calc_spare_health {
 			}
 		}
 
-		if ($spareCount <= $strCritical) {
+		if ($spareCount < $strCritical) {
 			$critStatus++;
-		} elsif ($spareCount <= $strWarning) {
+		} elsif ($spareCount < $strWarning) {
 			$warnStatus++;
 		} elsif ($spareCount > $strWarning) {
 			$okStatus++;
@@ -282,8 +282,12 @@ sub calc_spare_health {
 		$intState = get_nagios_state($intState, 3);
 	}
 
-	if (!(defined($strOutput))) {
+	if ($intState eq 0) {
 		$strOutput = "OK - No problems found ($intObjectCount checked)";
+	}
+
+	if (!(defined($strOutput))) {
+		$strOutput = "UNKNOWN - No spare disk found";
 	}
 
 	return $intState, $strOutput;
