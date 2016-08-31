@@ -1858,7 +1858,7 @@ if ($strOption eq "volume_health") {
                 $hrefDiskInfo = filter_object($hrefDiskInfo, $strModifier);
         }
 
-        ($intState, $strOutput) = calc_disk_health($hrefDiskInfo, $strWarning, $strCritical);
+        ($intState, $strOutput) = calc_disk_health($hrefDiskInfo);
 }
 
 ## FUTURE STUFF----
