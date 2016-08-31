@@ -701,7 +701,7 @@ sub get_snapmirror_lag {
 }
 
 sub calc_snapmirror_health {
-		# Work out which values have crossed the snapmirror thresholds defined by the user.
+	# Work out which values have crossed the snapmirror thresholds defined by the user.
         my ($hrefSMInfo, $strWarning, $strCritical) = @_;
         my ($hrefWarnThresholds, $hrefCritThresholds) = snapmirror_threshold_converter($strWarning, $strCritical);
         my $intState = 0;
@@ -784,6 +784,7 @@ sub snapmirror_threshold_converter {
 ##############################################
 ## QUOTA SPACE
 ##############################################
+
 sub get_quota_space {
 	# Get quota monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
@@ -845,13 +846,13 @@ sub calc_quota_health {
 	# Work out which values have crossed the quota thresholds defined on the filer.
 	my $hrefQuotaInfo = shift;
 	my $intState = 0;
-    my $intObjectCount = 0;
-    my $strOutput;
+	my $intObjectCount = 0;
+	my $strOutput;
 
 	# Iterate through each of the objects and test the values, then set the Nagios state information as necessary.
-    foreach my $strQuota (keys %$hrefQuotaInfo) {
-    	$intObjectCount = $intObjectCount + 1;
-	#	my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
+	foreach my $strQuota (keys %$hrefQuotaInfo) {
+		$intObjectCount = $intObjectCount + 1;
+		#my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
 		my $intUsedToBytes = $hrefQuotaInfo->{$strQuota}->{'space-used'}*1024;
 		my $strReadableUsed = space_to_human_readable($intUsedToBytes);
 
@@ -1055,7 +1056,7 @@ sub get_volume_space {
 	my $nahQuery = NaElement->new("query");
 	my $nahVolInfo = NaElement->new("volume-attributes");
 	my $nahVolIdInfo = NaElement->new("volume-id-attributes");
-    my $nahTag = NaElement->new("tag");
+	my $nahTag = NaElement->new("tag");
 	my $strActiveTag = "";
 	my %hshVolUsage;
 
@@ -1068,8 +1069,8 @@ sub get_volume_space {
 	}
 	
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
-    $nahVolIterator->child_add_string("max-records", 100);
-    $nahVolIterator->child_add($nahTag);
+	$nahVolIterator->child_add_string("max-records", 100);
+	$nahVolIterator->child_add($nahTag);
 	while(defined($strActiveTag)) {
         if ($strActiveTag ne "") {
             $nahTag->set_content($strActiveTag);
