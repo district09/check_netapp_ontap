@@ -787,6 +787,7 @@ sub snapmirror_threshold_converter {
 ##############################################
 ## QUOTA SPACE
 ##############################################
+
 sub get_quota_space {
 	# Get quota monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
@@ -848,13 +849,13 @@ sub calc_quota_health {
 	# Work out which values have crossed the quota thresholds defined on the filer.
 	my $hrefQuotaInfo = shift;
 	my $intState = 0;
-    my $intObjectCount = 0;
-    my $strOutput;
+	my $intObjectCount = 0;
+	my $strOutput;
 
 	# Iterate through each of the objects and test the values, then set the Nagios state information as necessary.
-    foreach my $strQuota (keys %$hrefQuotaInfo) {
-    	$intObjectCount = $intObjectCount + 1;
-	#	my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
+	foreach my $strQuota (keys %$hrefQuotaInfo) {
+    		$intObjectCount = $intObjectCount + 1;
+		#my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
 		my $intUsedToBytes = $hrefQuotaInfo->{$strQuota}->{'space-used'}*1024;
 		my $strReadableUsed = space_to_human_readable($intUsedToBytes);
 
@@ -999,7 +1000,7 @@ sub get_snap_space {
                 $nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
         }
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         $nahVolIterator->child_add_string("max-records", 100);
         $nahVolIterator->child_add($nahTag);
         while(defined($strActiveTag)) {
@@ -1063,7 +1064,7 @@ sub get_volume_space {
 	my $nahQuery = NaElement->new("query");
 	my $nahVolInfo = NaElement->new("volume-attributes");
 	my $nahVolIdInfo = NaElement->new("volume-id-attributes");
-    my $nahTag = NaElement->new("tag");
+	my $nahTag = NaElement->new("tag");
 	my $strActiveTag = "";
 	my %hshVolUsage;
 
@@ -1076,8 +1077,8 @@ sub get_volume_space {
 	}
 	
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
-    $nahVolIterator->child_add_string("max-records", 100);
-    $nahVolIterator->child_add($nahTag);
+	$nahVolIterator->child_add_string("max-records", 100);
+	$nahVolIterator->child_add($nahTag);
 	while(defined($strActiveTag)) {
         if ($strActiveTag ne "") {
             $nahTag->set_content($strActiveTag);
@@ -1195,13 +1196,13 @@ sub calc_space_health {
 		}
         }
 
-		# Test to see if the monitored object has crossed a defined space threshhold.
+	# Test to see if the monitored object has crossed a defined space threshhold.
         ($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
         ($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
 
         
 
-		# If everything looks ok and no output has been defined then set the message to display OK.
+	# If everything looks ok and no output has been defined then set the message to display OK.
         if (!(defined($strOutput))) {
                 $strOutput = "OK - No problems found ($intObjectCount checked)";
         }
@@ -1226,7 +1227,7 @@ sub space_threshold_helper {
 		my $bMarkedForRemoval = 0;
 
 		# Test added by Didier Tollenaers 03/04/2015
-        if ($hrefVolInfo->{$strVol}->{'state'} ne 'offline')  {
+        	if ($hrefVolInfo->{$strVol}->{'state'} ne 'offline')  {
 		
 			# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
 			if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
@@ -1409,7 +1410,7 @@ sub space_threshold_converter {
 }
 
 sub space_to_bytes {
-		# Convert human readable magnitude to bytes.
+	# Convert human readable magnitude to bytes.
         my $strInput = shift;
         $strInput =~ m/([0-9]*)([KMGT]?B)/;
         my $intValue = $1;
@@ -1443,8 +1444,8 @@ sub space_to_human_readable {
                 $intCount = $intCount + 1;
         }
 		
-		# Round the output so that it's a whole value only.
-		my $strRoundedNumber = sprintf("%0.2f", $intValue) . $aryStrings[$intCount];
+	# Round the output so that it's a whole value only.
+	my $strRoundedNumber = sprintf("%0.2f", $intValue) . $aryStrings[$intCount];
 
         return $strRoundedNumber;
 }
@@ -1454,7 +1455,7 @@ sub space_to_human_readable {
 ##############################################
 
 sub help {
-		# It helps :) I hope.
+	# It helps :) I hope.
         my $strVersion = "v0.6 b190514";
         print "\ncheck_netapp_ontapi version: $strVersion\n";
         print "By John Murphy <john.murphy\@roshamboot.org>, GNU GPL License\n";
