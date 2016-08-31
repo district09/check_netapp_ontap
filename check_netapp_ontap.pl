@@ -810,7 +810,7 @@ sub get_snapmirror_lag {
                         last;
                 }
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
 		foreach my $nahSM ($nahResponse->child_get("attributes-list")->children_get()) {
 			# Without snapmirror control plane v2 insufficient information is available to perform monitoring.
 			if ($nahSM->child_get_string("relationship-control-plane") eq "v2") {
@@ -953,7 +953,7 @@ sub get_quota_space {
                         last;
                 }
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
                 foreach my $nahQuota ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strQuotaName = $nahQuota->child_get_string("vserver") . "/" . $nahQuota->child_get_string("volume");
 
@@ -1072,18 +1072,19 @@ sub get_aggregate_space {
                 }
 
                 $nahAggIterator->child_add_string("max-records", 100);
-				# Invoke the request.
+
+		# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahAggIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
-				# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
                 foreach my $nahAgg ($nahResponse->child_get("attributes-list")->children_get()) {
                         my $strAggName = $nahAgg->child_get_string("aggregate-name");
                         my $strAggOwner = $nahAgg->child_get("aggr-ownership-attributes")->child_get_string("home-name");
@@ -1149,7 +1150,7 @@ sub get_snap_space {
                         last;
                 }
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
                 foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
                         my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
@@ -1225,7 +1226,7 @@ sub get_volume_space {
                         last;
                 }
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
 		foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
 			my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
