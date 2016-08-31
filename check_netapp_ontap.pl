@@ -1770,7 +1770,7 @@ if ($strOption eq "volume_health") {
                 $hrefClusterInfo = filter_object($hrefClusterInfo, $strModifier);
         }
 
-        ($intState, $strOutput) = calc_cluster_health($hrefClusterInfo, $strWarning, $strCritical);
+        ($intState, $strOutput) = calc_cluster_health($hrefClusterInfo);
 } elsif ($strOption eq "disk_health") {
 	# * COMPLETE
 	# Disk health -wc ????
@@ -1781,7 +1781,7 @@ if ($strOption eq "volume_health") {
                 $hrefDiskInfo = filter_object($hrefDiskInfo, $strModifier);
         }
 
-        ($intState, $strOutput) = calc_disk_health($hrefDiskInfo, $strWarning, $strCritical);
+        ($intState, $strOutput) = calc_disk_health($hrefDiskInfo);
 }
 
 ## FUTURE STUFF----
