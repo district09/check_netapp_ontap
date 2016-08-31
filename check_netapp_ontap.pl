@@ -9,6 +9,7 @@
 # On Github:        https://github.com/willemdh/check_netapp_ontap
 # On OutsideIT:     http://outsideit.net/check-netapp-ontap
 # Recent History:
+#	31/08/16 => Add option to check spare disks
 #	05/06/14 => Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
 #	06/06/14 => Updated script header and documentation, further testing with thresholds 
 #	10/06/14 => Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode for a syncing mirror, were causing errors
@@ -160,6 +161,130 @@ sub calc_disk_health {
 	if (!(defined($strOutput))) {
                 $strOutput = "OK - No problems found ($intObjectCount checked)";
         }
+
+	return $intState, $strOutput;
+}
+
+##############################################
+## SPARE HEALTH
+##############################################
+
+sub get_spare_info {
+	my ($nahStorage, $strVHost) = @_;
+        my $nahSpareIterator = NaElement->new("storage-disk-get-iter");
+	my $nahQuery = NaElement->new("query");
+        my $nahSpareInfo = NaElement->new("storage-disk-info");
+        my $nahSpareOwnerInfo = NaElement->new("disk-ownership-info");
+        my $strActiveTag = "";
+        my %hshSpareInfo;
+
+	if (defined($strVHost)) {
+                $nahSpareIterator->child_add($nahQuery);
+                $nahQuery->child_add($nahSpareInfo);
+		$nahSpareInfo->child_add($nahSpareOwnerInfo);
+                $nahSpareOwnerInfo->child_add_string("home-node", $strVHost);
+        }
+
+        while(defined($strActiveTag)) {
+                if ($strActiveTag ne "") {
+                        $nahSpareIterator->child_add_string("tag", $strActiveTag);
+                }
+
+                $nahSpareIterator->child_add_string("max-records", 600);
+                my $nahResponse = $nahStorage->invoke_elem($nahSpareIterator);
+                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+
+                $strActiveTag = $nahResponse->child_get_string("next-tag");
+
+                if ($nahResponse->child_get_string("num-records") == 0) {
+                        last;
+                }
+
+		SPARE:
+                foreach my $nahSpare ($nahResponse->child_get("attributes-list")->children_get()) {
+			my $strSpareName = $nahSpare->child_get_string("disk-name");
+
+			my $raidInfo = $nahSpare->child_get("disk-raid-info");
+			my $containertype = $raidInfo->child_get_string("container-type");
+
+			if (!defined($containertype)) {
+				next SPARE;
+			} elsif ($containertype eq "spare" || $containertype eq "unassigned") {
+				my $nodeName = $raidInfo->child_get_string("active-node-name");
+				my $spareInfo = $raidInfo->child_get("disk-spare-info");
+				my $zeroed = $spareInfo->child_get_string('is-zeroed');
+
+				$hshSpareInfo{$nodeName}{$strSpareName}{'status'} = $containertype;
+				$hshSpareInfo{$nodeName}{$strSpareName}{'zeroed'} = $zeroed;
+			} else {
+				next SPARE;
+			}
+		}
+	}
+
+	return \%hshSpareInfo;
+}
+
+sub calc_spare_health {
+	my ($hrefSpareInfo, $strVHost, $strWarning, $strCritical) = @_;
+	my $intState = 0;
+	my $intObjectCount = 0;
+	my $strOutput;
+	my ($spareCount, $unassignedCount, $unknownCount, $notZeroedCount) = (0, 0, 0, 0);
+	my ($unknownStatus, $okStatus, $warnStatus, $critStatus) = (0, 0, 0, 0);
+
+	NODE:
+	foreach my $node (keys %$hrefSpareInfo) {
+		if (defined($strVHost) && $node ne $strVHost) {
+			next NODE;
+		}
+
+		my $strNewMessage;
+
+		foreach my $strSpare (keys $hrefSpareInfo->{$node}) {
+			$intObjectCount++;
+	
+			my $zeroedStatus = $hrefSpareInfo->{$node}->{$strSpare}->{'zeroed'};
+			if (defined($zeroedStatus) && $zeroedStatus ne "true") {
+				$notZeroedCount++;
+			}
+			my $status = $hrefSpareInfo->{$node}->{$strSpare}->{'status'};
+			if (defined($status && $status eq "spare")) {
+				$spareCount++;
+			} elsif (defined($status && $status eq "unassigned")) {
+				$unassignedCount++;
+			} else {
+				$unknownCount++;
+			}
+		}
+
+		if ($spareCount <= $strCritical) {
+			$critStatus++;
+		} elsif ($spareCount <= $strWarning) {
+			$warnStatus++;
+		} elsif ($spareCount > $strWarning) {
+			$okStatus++;
+		} else {
+			$unknownStatus++;
+		}
+
+		$strNewMessage = sprintf("%s: %d spare disks (%s not zeroed) and %s unassigned", $node, $spareCount, $notZeroedCount, $unassignedCount);
+		$strOutput = get_nagios_description($strOutput, $strNewMessage);
+	}
+
+	if ($critStatus > 0) {
+		$intState = get_nagios_state($intState, 2);
+	} elsif ($warnStatus > 0) {
+		$intState = get_nagios_state($intState, 1);
+	} elsif ($okStatus > 0) {
+		$intState = get_nagios_state($intState, 0);
+	} else {
+		$intState = get_nagios_state($intState, 3);
+	}
+
+	if (!(defined($strOutput))) {
+		$strOutput = "OK - No problems found ($intObjectCount checked)";
+	}
 
 	return $intState, $strOutput;
 }
@@ -493,7 +618,6 @@ sub get_filer_hardware {
                 $nahNodeInfo->child_add_string("node", $strVHost);
         }
 
-
 	while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
                         $nahFilerIterator->child_add_string("tag", $strActiveTag);
@@ -663,7 +787,7 @@ sub get_snapmirror_lag {
                 $nahSMInfo->child_add_string("destination-volume-node", $strVHost);
         }
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         $nahSMIterator->child_add_string("max-records", 100);
         $nahSMIterator->child_add($nahTag);
         while(defined($strActiveTag)) {
@@ -671,16 +795,17 @@ sub get_snapmirror_lag {
                         $nahTag->set_content($strActiveTag);
                 }
 
-				# Invoke the request.
+		# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahSMIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
+
 		# Assign all the retrieved information to a hash 
 		foreach my $nahSM ($nahResponse->child_get("attributes-list")->children_get()) {
 			# Without snapmirror control plane v2 insufficient information is available to perform monitoring.
@@ -704,7 +829,7 @@ sub get_snapmirror_lag {
 }
 
 sub calc_snapmirror_health {
-		# Work out which values have crossed the snapmirror thresholds defined by the user.
+	# Work out which values have crossed the snapmirror thresholds defined by the user.
         my ($hrefSMInfo, $strWarning, $strCritical) = @_;
         my ($hrefWarnThresholds, $hrefCritThresholds) = snapmirror_threshold_converter($strWarning, $strCritical);
         my $intState = 0;
@@ -787,6 +912,7 @@ sub snapmirror_threshold_converter {
 ##############################################
 ## QUOTA SPACE
 ##############################################
+
 sub get_quota_space {
 	# Get quota monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
@@ -797,32 +923,33 @@ sub get_quota_space {
         my $strActiveTag = "";
         my %hshQuotaUsage;
 
-		# Narrow search to only the requested node if configured by user with the -n option
+	# Narrow search to only the requested node if configured by user with the -n option
         if (defined($strVHost)) {
                 $nahQuotaIterator->child_add($nahQuery);
                 $nahQuery->child_add($nahQuotaInfo);
                 $nahQuotaInfo->child_add_string("vserver", $strVHost);
         }
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         while(defined($strActiveTag)) {
                 if ($strActiveTag ne "") {
                         $nahQuotaIterator->child_add_string("tag", $strActiveTag);
                 }
 
                 $nahQuotaIterator->child_add_string("max-records", 200);
-				# Invoke the request.
+
+		# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahQuotaIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
-				# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash 
                 foreach my $nahQuota ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strQuotaName = $nahQuota->child_get_string("vserver") . "/" . $nahQuota->child_get_string("volume");
 
@@ -848,13 +975,13 @@ sub calc_quota_health {
 	# Work out which values have crossed the quota thresholds defined on the filer.
 	my $hrefQuotaInfo = shift;
 	my $intState = 0;
-    my $intObjectCount = 0;
-    my $strOutput;
+	my $intObjectCount = 0;
+	my $strOutput;
 
 	# Iterate through each of the objects and test the values, then set the Nagios state information as necessary.
-    foreach my $strQuota (keys %$hrefQuotaInfo) {
-    	$intObjectCount = $intObjectCount + 1;
-	#	my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
+	foreach my $strQuota (keys %$hrefQuotaInfo) {
+    		$intObjectCount = $intObjectCount + 1;
+		#my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
 		my $intUsedToBytes = $hrefQuotaInfo->{$strQuota}->{'space-used'}*1024;
 		my $strReadableUsed = space_to_human_readable($intUsedToBytes);
 
@@ -999,7 +1126,7 @@ sub get_snap_space {
                 $nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
         }
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
         $nahVolIterator->child_add_string("max-records", 100);
         $nahVolIterator->child_add($nahTag);
         while(defined($strActiveTag)) {
@@ -1007,18 +1134,18 @@ sub get_snap_space {
                     $nahTag->set_content($strActiveTag);
                 }
 
-				# Invoke the request.
+		# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahVolIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
-				# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash 
                 foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
                         my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
@@ -1063,7 +1190,7 @@ sub get_volume_space {
 	my $nahQuery = NaElement->new("query");
 	my $nahVolInfo = NaElement->new("volume-attributes");
 	my $nahVolIdInfo = NaElement->new("volume-id-attributes");
-    my $nahTag = NaElement->new("tag");
+	my $nahTag = NaElement->new("tag");
 	my $strActiveTag = "";
 	my %hshVolUsage;
 
@@ -1076,11 +1203,11 @@ sub get_volume_space {
 	}
 	
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
-    $nahVolIterator->child_add_string("max-records", 100);
-    $nahVolIterator->child_add($nahTag);
+	$nahVolIterator->child_add_string("max-records", 100);
+	$nahVolIterator->child_add($nahTag);
 	while(defined($strActiveTag)) {
         if ($strActiveTag ne "") {
-            $nahTag->set_content($strActiveTag);
+        	$nahTag->set_content($strActiveTag);
         }
 		
 		$nahVolIterator->child_add_string("max-records", 100);
@@ -1195,13 +1322,13 @@ sub calc_space_health {
 		}
         }
 
-		# Test to see if the monitored object has crossed a defined space threshhold.
+	# Test to see if the monitored object has crossed a defined space threshhold.
         ($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
         ($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
 
         
 
-		# If everything looks ok and no output has been defined then set the message to display OK.
+	# If everything looks ok and no output has been defined then set the message to display OK.
         if (!(defined($strOutput))) {
                 $strOutput = "OK - No problems found ($intObjectCount checked)";
         }
@@ -1226,7 +1353,7 @@ sub space_threshold_helper {
 		my $bMarkedForRemoval = 0;
 
 		# Test added by Didier Tollenaers 03/04/2015
-        if ($hrefVolInfo->{$strVol}->{'state'} ne 'offline')  {
+        	if ($hrefVolInfo->{$strVol}->{'state'} ne 'offline')  {
 		
 			# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
 			if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
@@ -1409,7 +1536,7 @@ sub space_threshold_converter {
 }
 
 sub space_to_bytes {
-		# Convert human readable magnitude to bytes.
+	# Convert human readable magnitude to bytes.
         my $strInput = shift;
         $strInput =~ m/([0-9]*)([KMGT]?B)/;
         my $intValue = $1;
@@ -1443,8 +1570,8 @@ sub space_to_human_readable {
                 $intCount = $intCount + 1;
         }
 		
-		# Round the output so that it's a whole value only.
-		my $strRoundedNumber = sprintf("%0.2f", $intValue) . $aryStrings[$intCount];
+	# Round the output so that it's a whole value only.
+	my $strRoundedNumber = sprintf("%0.2f", $intValue) . $aryStrings[$intCount];
 
         return $strRoundedNumber;
 }
@@ -1454,7 +1581,7 @@ sub space_to_human_readable {
 ##############################################
 
 sub help {
-		# It helps :) I hope.
+	# It helps :) I hope.
         my $strVersion = "v0.6 b190514";
         print "\ncheck_netapp_ontapi version: $strVersion\n";
         print "By John Murphy <john.murphy\@roshamboot.org>, GNU GPL License\n";
@@ -1533,6 +1660,11 @@ cluster_health
 disk_health
         desc: Check the health of the disks in the cluster.
         thresh: Not customizable yet.
+	node: The node option restricts this check by cluster-node name.
+
+disk_spare
+	desc: Check the number of spare disks
+	thresh: Warning / critical required spare disks. Default thresholds are 2 / 1.
 	node: The node option restricts this check by cluster-node name.
 
 * For keyword thresholds, if you want to ignore alerts for that particular keyword you set it at the same threshold that the alert defaults to.
@@ -1857,7 +1989,18 @@ if ($strOption eq "volume_health") {
                 $hrefDiskInfo = filter_object($hrefDiskInfo, $strModifier);
         }
 
-        ($intState, $strOutput) = calc_disk_health($hrefDiskInfo, $strWarning, $strCritical);
+        ($intState, $strOutput) = calc_disk_health($hrefDiskInfo);
+} elsif ($strOption eq "disk_spare") {
+	$strWarning  ||= 2;
+	$strCritical ||= 1;
+
+	my $hrefSpareInfo = get_spare_info($nahStorage, $strVHost, $strWarning, $strCritical);
+
+        if (defined($strModifier)) {
+                $hrefSpareInfo = filter_object($hrefSpareInfo, $strModifier);
+        }
+
+        ($intState, $strOutput) = calc_spare_health($hrefSpareInfo, $strVHost, $strWarning, $strCritical);
 }
 
 ## FUTURE STUFF----
