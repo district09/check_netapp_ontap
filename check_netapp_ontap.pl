@@ -9,6 +9,7 @@
 # On Github:        https://github.com/willemdh/check_netapp_ontap
 # On OutsideIT:     http://outsideit.net/check-netapp-ontap
 # Recent History:
+#	31/08/16 => Add option to check spare disks
 #	05/06/14 => Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
 #	06/06/14 => Updated script header and documentation, further testing with thresholds 
 #	10/06/14 => Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode for a syncing mirror, were causing errors
@@ -160,6 +161,130 @@ sub calc_disk_health {
 	if (!(defined($strOutput))) {
                 $strOutput = "OK - No problems found ($intObjectCount checked)";
         }
+
+	return $intState, $strOutput;
+}
+
+##############################################
+## SPARE HEALTH
+##############################################
+
+sub get_spare_info {
+	my ($nahStorage, $strVHost) = @_;
+        my $nahSpareIterator = NaElement->new("storage-disk-get-iter");
+	my $nahQuery = NaElement->new("query");
+        my $nahSpareInfo = NaElement->new("storage-disk-info");
+        my $nahSpareOwnerInfo = NaElement->new("disk-ownership-info");
+        my $strActiveTag = "";
+        my %hshSpareInfo;
+
+	if (defined($strVHost)) {
+                $nahSpareIterator->child_add($nahQuery);
+                $nahQuery->child_add($nahSpareInfo);
+		$nahSpareInfo->child_add($nahSpareOwnerInfo);
+                $nahSpareOwnerInfo->child_add_string("home-node", $strVHost);
+        }
+
+        while(defined($strActiveTag)) {
+                if ($strActiveTag ne "") {
+                        $nahSpareIterator->child_add_string("tag", $strActiveTag);
+                }
+
+                $nahSpareIterator->child_add_string("max-records", 600);
+                my $nahResponse = $nahStorage->invoke_elem($nahSpareIterator);
+                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+
+                $strActiveTag = $nahResponse->child_get_string("next-tag");
+
+                if ($nahResponse->child_get_string("num-records") == 0) {
+                        last;
+                }
+
+		SPARE:
+                foreach my $nahSpare ($nahResponse->child_get("attributes-list")->children_get()) {
+			my $strSpareName = $nahSpare->child_get_string("disk-name");
+
+			my $raidInfo = $nahSpare->child_get("disk-raid-info");
+			my $containertype = $raidInfo->child_get_string("container-type");
+
+			if (!defined($containertype)) {
+				next SPARE;
+			} elsif ($containertype eq "spare" || $containertype eq "unassigned") {
+				my $nodeName = $raidInfo->child_get_string("active-node-name");
+				my $spareInfo = $raidInfo->child_get("disk-spare-info");
+				my $zeroed = $spareInfo->child_get_string('is-zeroed');
+
+				$hshSpareInfo{$nodeName}{$strSpareName}{'status'} = $containertype;
+				$hshSpareInfo{$nodeName}{$strSpareName}{'zeroed'} = $zeroed;
+			} else {
+				next SPARE;
+			}
+		}
+	}
+
+	return \%hshSpareInfo;
+}
+
+sub calc_spare_health {
+	my ($hrefSpareInfo, $strVHost, $strWarning, $strCritical) = @_;
+	my $intState = 0;
+	my $intObjectCount = 0;
+	my $strOutput;
+	my ($spareCount, $unassignedCount, $unknownCount, $notZeroedCount) = (0, 0, 0, 0);
+	my ($unknownStatus, $okStatus, $warnStatus, $critStatus) = (0, 0, 0, 0);
+
+	NODE:
+	foreach my $node (keys %$hrefSpareInfo) {
+		if (defined($strVHost) && $node ne $strVHost) {
+			next NODE;
+		}
+
+		my $strNewMessage;
+
+		foreach my $strSpare (keys $hrefSpareInfo->{$node}) {
+			$intObjectCount++;
+	
+			my $zeroedStatus = $hrefSpareInfo->{$node}->{$strSpare}->{'zeroed'};
+			if (defined($zeroedStatus) && $zeroedStatus ne "true") {
+				$notZeroedCount++;
+			}
+			my $status = $hrefSpareInfo->{$node}->{$strSpare}->{'status'};
+			if (defined($status && $status eq "spare")) {
+				$spareCount++;
+			} elsif (defined($status && $status eq "unassigned")) {
+				$unassignedCount++;
+			} else {
+				$unknownCount++;
+			}
+		}
+
+		if ($spareCount <= $strCritical) {
+			$critStatus++;
+		} elsif ($spareCount <= $strWarning) {
+			$warnStatus++;
+		} elsif ($spareCount > $strWarning) {
+			$okStatus++;
+		} else {
+			$unknownStatus++;
+		}
+
+		$strNewMessage = sprintf("%s: %d spare disks (%s not zeroed) and %s unassigned", $node, $spareCount, $notZeroedCount, $unassignedCount);
+		$strOutput = get_nagios_description($strOutput, $strNewMessage);
+	}
+
+	if ($critStatus > 0) {
+		$intState = get_nagios_state($intState, 2);
+	} elsif ($warnStatus > 0) {
+		$intState = get_nagios_state($intState, 1);
+	} elsif ($okStatus > 0) {
+		$intState = get_nagios_state($intState, 0);
+	} else {
+		$intState = get_nagios_state($intState, 3);
+	}
+
+	if (!(defined($strOutput))) {
+		$strOutput = "OK - No problems found ($intObjectCount checked)";
+	}
 
 	return $intState, $strOutput;
 }
@@ -1537,6 +1662,11 @@ disk_health
         thresh: Not customizable yet.
 	node: The node option restricts this check by cluster-node name.
 
+disk_spare
+	desc: Check the number of spare disks
+	thresh: Warning / critical required spare disks. Default thresholds are 2 / 1.
+	node: The node option restricts this check by cluster-node name.
+
 * For keyword thresholds, if you want to ignore alerts for that particular keyword you set it at the same threshold that the alert defaults to.
 
 EOL
@@ -1860,6 +1990,17 @@ if ($strOption eq "volume_health") {
         }
 
         ($intState, $strOutput) = calc_disk_health($hrefDiskInfo);
+} elsif ($strOption eq "disk_spare") {
+	$strWarning  ||= 2;
+	$strCritical ||= 1;
+
+	my $hrefSpareInfo = get_spare_info($nahStorage, $strVHost, $strWarning, $strCritical);
+
+        if (defined($strModifier)) {
+                $hrefSpareInfo = filter_object($hrefSpareInfo, $strModifier);
+        }
+
+        ($intState, $strOutput) = calc_spare_health($hrefSpareInfo, $strVHost, $strWarning, $strCritical);
 }
 
 ## FUTURE STUFF----
