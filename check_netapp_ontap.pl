@@ -159,7 +159,7 @@ sub calc_disk_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
 	return $intState, $strOutput;
@@ -170,13 +170,13 @@ sub calc_disk_health {
 ##############################################
 
 sub get_spare_info {
-	my ($nahStorage, $strVHost) = @_;
-        my $nahSpareIterator = NaElement->new("storage-disk-get-iter");
+	my ($nahStorage, $strVHost, $strWarning, $strCritical) = @_;
+	my $nahSpareIterator = NaElement->new("storage-disk-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahSpareInfo = NaElement->new("storage-disk-info");
-        my $nahSpareOwnerInfo = NaElement->new("disk-ownership-info");
-        my $strActiveTag = "";
-        my %hshSpareInfo;
+	my $nahSpareInfo = NaElement->new("storage-disk-info");
+	my $nahSpareOwnerInfo = NaElement->new("disk-ownership-info");
+	my $strActiveTag = "";
+	my %hshSpareInfo;
 
 	if (defined($strVHost)) {
                 $nahSpareIterator->child_add($nahQuery);
@@ -258,9 +258,9 @@ sub calc_spare_health {
 			}
 		}
 
-		if ($spareCount <= $strCritical) {
+		if ($spareCount < $strCritical) {
 			$critStatus++;
-		} elsif ($spareCount <= $strWarning) {
+		} elsif ($spareCount < $strWarning) {
 			$warnStatus++;
 		} elsif ($spareCount > $strWarning) {
 			$okStatus++;
@@ -282,8 +282,12 @@ sub calc_spare_health {
 		$intState = get_nagios_state($intState, 3);
 	}
 
+	if ($intState eq 0) {
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
+
 	if (!(defined($strOutput))) {
-		$strOutput = "OK - No problems found ($intObjectCount checked)";
+		$strOutput = "UNKNOWN - No spare disk found";
 	}
 
 	return $intState, $strOutput;
@@ -423,7 +427,7 @@ sub calc_interface_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;
@@ -498,7 +502,7 @@ sub calc_cluster_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;	
@@ -594,7 +598,7 @@ sub calc_netapp_alarm_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;
@@ -759,7 +763,7 @@ sub calc_filer_hardware_health {
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;
@@ -806,7 +810,7 @@ sub get_snapmirror_lag {
                         last;
                 }
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
 		foreach my $nahSM ($nahResponse->child_get("attributes-list")->children_get()) {
 			# Without snapmirror control plane v2 insufficient information is available to perform monitoring.
 			if ($nahSM->child_get_string("relationship-control-plane") eq "v2") {
@@ -867,7 +871,7 @@ sub calc_snapmirror_health {
 
 	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
 	return $intState, $strOutput;
@@ -949,7 +953,7 @@ sub get_quota_space {
                         last;
                 }
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
                 foreach my $nahQuota ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strQuotaName = $nahQuota->child_get_string("vserver") . "/" . $nahQuota->child_get_string("volume");
 
@@ -1032,7 +1036,7 @@ sub calc_quota_health {
 	
 	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         return $intState, $strOutput;
@@ -1068,18 +1072,19 @@ sub get_aggregate_space {
                 }
 
                 $nahAggIterator->child_add_string("max-records", 100);
-				# Invoke the request.
+
+		# Invoke the request.
                 my $nahResponse = $nahStorage->invoke_elem($nahAggIterator);
                 validate_ontapi_response($nahResponse, "Failed volume query: ");
 
                 $strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
+		# Stop if there are no more records.
                 if ($nahResponse->child_get_string("num-records") == 0) {
                         last;
                 }
 
-				# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
                 foreach my $nahAgg ($nahResponse->child_get("attributes-list")->children_get()) {
                         my $strAggName = $nahAgg->child_get_string("aggregate-name");
                         my $strAggOwner = $nahAgg->child_get("aggr-ownership-attributes")->child_get_string("home-name");
@@ -1145,7 +1150,7 @@ sub get_snap_space {
                         last;
                 }
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
                 foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
                         my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
@@ -1221,7 +1226,7 @@ sub get_volume_space {
                         last;
                 }
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
 		foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
 			my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
@@ -1330,7 +1335,7 @@ sub calc_space_health {
 
 	# If everything looks ok and no output has been defined then set the message to display OK.
         if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
+                $strOutput = "OK - No problem found ($intObjectCount checked)";
         }
 
         if ((defined($perfOutput))) {
