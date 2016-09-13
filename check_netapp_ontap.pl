@@ -230,7 +230,6 @@ sub calc_spare_health {
 	my $intState = 0;
 	my $intObjectCount = 0;
 	my $strOutput;
-	my ($spareCount, $unassignedCount, $unknownCount, $notZeroedCount) = (0, 0, 0, 0);
 	my ($unknownStatus, $okStatus, $warnStatus, $critStatus) = (0, 0, 0, 0);
 
 	NODE:
@@ -239,6 +238,7 @@ sub calc_spare_health {
 			next NODE;
 		}
 
+		my ($spareCount, $unassignedCount, $unknownCount, $notZeroedCount) = (0, 0, 0, 0);
 		my $strNewMessage;
 
 		foreach my $strSpare (keys $hrefSpareInfo->{$node}) {
