@@ -813,7 +813,7 @@ sub get_snapmirror_lag {
 		# Assign all the retrieved information to a hash.
 		foreach my $nahSM ($nahResponse->child_get("attributes-list")->children_get()) {
 			# Without snapmirror control plane v2 insufficient information is available to perform monitoring.
-			if ($nahSM->child_get_string("relationship-control-plane") eq "v2") {
+			if (defined($nahSM->child_get_string("relationship-control-plane")) && $nahSM->child_get_string("relationship-control-plane") eq "v2") {
 				my $strSMName = $nahSM->child_get_string("destination-volume-node") . "://" . $nahSM->child_get_string("destination-location");
                         	$hshSMHealth{$strSMName}{'source'} = $nahSM->child_get_string("source-location");
 				
