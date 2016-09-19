@@ -262,7 +262,7 @@ sub calc_spare_health {
 			$critStatus++;
 		} elsif ($spareCount < $strWarning) {
 			$warnStatus++;
-		} elsif ($spareCount > $strWarning) {
+		} elsif ($spareCount >= $strWarning) {
 			$okStatus++;
 		} else {
 			$unknownStatus++;
@@ -282,12 +282,10 @@ sub calc_spare_health {
 		$intState = get_nagios_state($intState, 3);
 	}
 
-	if ($intState eq 0) {
+	if (!(defined($strOutput)) && $intState == 0) {
 		$strOutput = "OK - No problem found ($intObjectCount checked)";
-	}
-
-	if (!(defined($strOutput))) {
-		$strOutput = "UNKNOWN - No spare disk found";
+	} else {
+		$strOutput = "UNKNOWN - No cluster node found";
 	}
 
 	return $intState, $strOutput;
@@ -1996,8 +1994,8 @@ if ($strOption eq "volume_health") {
 
         ($intState, $strOutput) = calc_disk_health($hrefDiskInfo);
 } elsif ($strOption eq "disk_spare") {
-	$strWarning  ||= 2;
-	$strCritical ||= 1;
+	$strWarning  //= 2;
+	$strCritical //= 1;
 
 	my $hrefSpareInfo = get_spare_info($nahStorage, $strVHost, $strWarning, $strCritical);
 
