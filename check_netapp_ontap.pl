@@ -282,12 +282,10 @@ sub calc_spare_health {
 		$intState = get_nagios_state($intState, 3);
 	}
 
-	if ($intState eq 0) {
+	if (!(defined($strOutput)) && $intState == 0) {
 		$strOutput = "OK - No problem found ($intObjectCount checked)";
-	}
-
-	if (!(defined($strOutput))) {
-		$strOutput = "UNKNOWN - No spare disk found";
+	} else {
+		$strOutput = "UNKNOWN - No cluster node found";
 	}
 
 	return $intState, $strOutput;
