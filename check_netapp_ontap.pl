@@ -262,7 +262,7 @@ sub calc_spare_health {
 			$critStatus++;
 		} elsif ($spareCount < $strWarning) {
 			$warnStatus++;
-		} elsif ($spareCount > $strWarning) {
+		} elsif ($spareCount >= $strWarning) {
 			$okStatus++;
 		} else {
 			$unknownStatus++;
