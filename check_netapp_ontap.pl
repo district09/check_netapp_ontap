@@ -1996,8 +1996,8 @@ if ($strOption eq "volume_health") {
 
         ($intState, $strOutput) = calc_disk_health($hrefDiskInfo);
 } elsif ($strOption eq "disk_spare") {
-	$strWarning  ||= 2;
-	$strCritical ||= 1;
+	$strWarning  //= 2;
+	$strCritical //= 1;
 
 	my $hrefSpareInfo = get_spare_info($nahStorage, $strVHost, $strWarning, $strCritical);
 
