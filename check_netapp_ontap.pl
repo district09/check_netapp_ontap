@@ -272,6 +272,13 @@ sub calc_spare_health {
 		$strOutput = get_nagios_description($strOutput, $strNewMessage);
 	}
 
+	# No output case
+	if (!(defined($strOutput))) {
+		$unknownStatus++;
+		my $strNewMessage = sprintf("No output");
+		$strOutput = get_nagios_description($strOutput, $strNewMessage);
+	}
+
 	if ($critStatus > 0) {
 		$intState = get_nagios_state($intState, 2);
 	} elsif ($warnStatus > 0) {
@@ -280,12 +287,6 @@ sub calc_spare_health {
 		$intState = get_nagios_state($intState, 0);
 	} else {
 		$intState = get_nagios_state($intState, 3);
-	}
-
-	if (!(defined($strOutput)) && $intState == 0) {
-		$strOutput = "OK - No problem found ($intObjectCount checked)";
-	} else {
-		$strOutput = "UNKNOWN - No cluster node found";
 	}
 
 	return $intState, $strOutput;
