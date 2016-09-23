@@ -272,6 +272,22 @@ sub calc_spare_health {
 		$strOutput = get_nagios_description($strOutput, $strNewMessage);
 	}
 
+	# No spare disk case
+	if ($intObjectCount == 0) {
+		if ($intObjectCount < $strCritical) {
+			$critStatus++;
+		} elsif ($intObjectCount < $strWarning) {
+			$warnStatus++;
+		} elsif ($intObjectCount >= $strWarning) {
+			$okStatus++;
+		} else {
+			$unknownStatus++;
+		}
+
+		my $strNewMessage = sprintf("No spare disk found on nodes");
+		$strOutput = get_nagios_description($strOutput, $strNewMessage);
+	}
+
 	# No output case
 	if (!(defined($strOutput))) {
 		$unknownStatus++;
