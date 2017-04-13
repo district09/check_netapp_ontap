@@ -1199,98 +1199,102 @@ sub space_threshold_helper {
 
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
+		
+		# Test added by Didier Tollenaers 03/04/2015 updated by Xavier Vallve 28/02/2017
+                if ($hrefVolInfo->{$strVol}->{'state'} eq 'online')  {
+		
+			# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
+			if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
+				# Prepare certain variables pre-check to reduce code duplication.
+			#	if (defined($hrefVolInfo->{$strVol}->{'space-total'})) {
+					my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
+			$intUsedPercent = floor($intUsedPercent + 0.5);
+			my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
+			my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
+			my $strNewMessage = $strVol . " - " . $strReadableUsed . "/" . $strReadableTotal . " (" . $intUsedPercent . "%) SPACE USED";
 
-		# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
-		if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
-			# Prepare certain variables pre-check to reduce code duplication.
-		#	if (defined($hrefVolInfo->{$strVol}->{'space-total'})) {
-				my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
-            	$intUsedPercent = floor($intUsedPercent + 0.5);
-            	my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
-            	my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
-            	my $strNewMessage = $strVol . " - " . $strReadableUsed . "/" . $strReadableTotal . " (" . $intUsedPercent . "%) SPACE USED";
-			
-			
-			if (defined($hrefThresholds->{'space-percent'}) && defined($hrefThresholds->{'space-count'})) {
-				my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
-				my $intCountInPercent = ($intCountInBytes/$hrefVolInfo->{$strVol}->{'space-total'}) * 100;
-				$intCountInPercent = floor($intCountInPercent + 0.5);
-				my $intPercentInvert = 100 - $hrefThresholds->{'space-percent'};
-				
-				if ($intCountInPercent < $intPercentInvert) {
+
+				if (defined($hrefThresholds->{'space-percent'}) && defined($hrefThresholds->{'space-count'})) {
+					my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
+					my $intCountInPercent = ($intCountInBytes/$hrefVolInfo->{$strVol}->{'space-total'}) * 100;
+					$intCountInPercent = floor($intCountInPercent + 0.5);
+					my $intPercentInvert = 100 - $hrefThresholds->{'space-percent'};
+
+					if ($intCountInPercent < $intPercentInvert) {
+						my $intBytesRemaining = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
+						if ($intCountInBytes > $intBytesRemaining) {
+							$intState = get_nagios_state($intState, $intAlertLevel);
+							$strOutput = get_nagios_description($strOutput, $strNewMessage);
+							$bMarkedForRemoval = 1;
+						}
+					} 
+					else {
+						if ($intUsedPercent >= $hrefThresholds->{'space-percent'}) {
+							$intState = get_nagios_state($intState, $intAlertLevel);
+				$strOutput = get_nagios_description($strOutput, $strNewMessage);
+				$bMarkedForRemoval = 1;
+						}
+					}
+				} elsif (defined($hrefThresholds->{'space-percent'})) {
+					if ($intUsedPercent >= $hrefThresholds->{'space-percent'}) {
+						$intState = get_nagios_state($intState, $intAlertLevel);
+						$strOutput = get_nagios_description($strOutput, $strNewMessage);
+						$bMarkedForRemoval = 1;
+					}
+				} elsif (defined($hrefThresholds->{'space-count'})) { 
+					my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
 					my $intBytesRemaining = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
 					if ($intCountInBytes > $intBytesRemaining) {
 						$intState = get_nagios_state($intState, $intAlertLevel);
 						$strOutput = get_nagios_description($strOutput, $strNewMessage);
 						$bMarkedForRemoval = 1;
 					}
-				} 
-				else {
-					if ($intUsedPercent >= $hrefThresholds->{'space-percent'}) {
-						$intState = get_nagios_state($intState, $intAlertLevel);
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $bMarkedForRemoval = 1;
-					}
 				}
-			} elsif (defined($hrefThresholds->{'space-percent'})) {
-				if ($intUsedPercent >= $hrefThresholds->{'space-percent'}) {
-                                	$intState = get_nagios_state($intState, $intAlertLevel);
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $bMarkedForRemoval = 1;
-                                }
-			} elsif (defined($hrefThresholds->{'space-count'})) { 
-				my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
-				my $intBytesRemaining = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
-				if ($intCountInBytes > $intBytesRemaining) {
-                                	$intState = get_nagios_state($intState, $intAlertLevel);
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $bMarkedForRemoval = 1;
-                                }
 			}
-		}
 
-		if (defined($hrefThresholds->{'inodes-percent'}) || defined($hrefThresholds->{'inodes-count'})) {	
-			my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'inodes-used'} / $hrefVolInfo->{$strVol}->{'inodes-total'}) * 100;
-                                $intUsedPercent = floor($intUsedPercent + 0.5);
-                                my $strNewMessage = $strVol . " - " . $hrefVolInfo->{$strVol}->{'inodes-used'} . "/" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " (" . $intUsedPercent . "%) INODES USED";
+			if (defined($hrefThresholds->{'inodes-percent'}) || defined($hrefThresholds->{'inodes-count'})) {	
+				my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'inodes-used'} / $hrefVolInfo->{$strVol}->{'inodes-total'}) * 100;
+					$intUsedPercent = floor($intUsedPercent + 0.5);
+					my $strNewMessage = $strVol . " - " . $hrefVolInfo->{$strVol}->{'inodes-used'} . "/" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " (" . $intUsedPercent . "%) INODES USED";
 
-			if (defined($hrefThresholds->{'inodes-percent'}) && defined($hrefThresholds->{'inodes-count'})) {
-				my $intPercentInInodes = $hrefVolInfo->{$strVol}->{'inodes-total'} * ($hrefThresholds->{'inodes-percent'}/100);
-				
-				if ($hrefThresholds->{'inodes-count'} < $intPercentInInodes) {
-					my $intInodesRemaining = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
-					if ($hrefThresholds->{'inodes-count'} > $intInodesRemaining) {
-						$intState = get_nagios_state($intState, $intAlertLevel);
-                                                $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                                $bMarkedForRemoval = 1;
+				if (defined($hrefThresholds->{'inodes-percent'}) && defined($hrefThresholds->{'inodes-count'})) {
+					my $intPercentInInodes = $hrefVolInfo->{$strVol}->{'inodes-total'} * ($hrefThresholds->{'inodes-percent'}/100);
+
+					if ($hrefThresholds->{'inodes-count'} < $intPercentInInodes) {
+						my $intInodesRemaining = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
+						if ($hrefThresholds->{'inodes-count'} > $intInodesRemaining) {
+							$intState = get_nagios_state($intState, $intAlertLevel);
+							$strOutput = get_nagios_description($strOutput, $strNewMessage);
+							$bMarkedForRemoval = 1;
+						}
+					} else {
+						if ($intUsedPercent >= $hrefThresholds->{'inodes-percent'}) {
+							$intState = get_nagios_state($intState, $intAlertLevel);
+							$strOutput = get_nagios_description($strOutput, $strNewMessage);
+							$bMarkedForRemoval = 1;
+						}
 					}
-				} else {
+				} elsif (defined($hrefThresholds->{'inodes-percent'})) {
 					if ($intUsedPercent >= $hrefThresholds->{'inodes-percent'}) {
 						$intState = get_nagios_state($intState, $intAlertLevel);
-                                                $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                                $bMarkedForRemoval = 1;
+						$strOutput = get_nagios_description($strOutput, $strNewMessage);
+						$bMarkedForRemoval = 1;
+					}
+				} elsif (defined($hrefThresholds->{'inodes-count'})) {
+					my $intInodesRemaining = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
+
+					if ($hrefThresholds->{'inodes-count'} > $intInodesRemaining) {
+						$intState = get_nagios_state($intState, $intAlertLevel);
+						$strOutput = get_nagios_description($strOutput, $strNewMessage);
+						$bMarkedForRemoval = 1;
 					}
 				}
-			} elsif (defined($hrefThresholds->{'inodes-percent'})) {
-				if ($intUsedPercent >= $hrefThresholds->{'inodes-percent'}) {
-                                	$intState = get_nagios_state($intState, $intAlertLevel);
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $bMarkedForRemoval = 1;
-                                }
-			} elsif (defined($hrefThresholds->{'inodes-count'})) {
-				my $intInodesRemaining = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
-                                
-				if ($hrefThresholds->{'inodes-count'} > $intInodesRemaining) {
-                                	$intState = get_nagios_state($intState, $intAlertLevel);
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $bMarkedForRemoval = 1;
-                                }
 			}
-		}
-		
-		# Remove problems from list so that it's not altered by further monitoring (I.e. warnings overwriting critical problems)
-		if ($bMarkedForRemoval) {
-			delete($hrefVolInfo->{$strVol});
+
+			# Remove problems from list so that it's not altered by further monitoring (I.e. warnings overwriting critical problems)
+			if ($bMarkedForRemoval) {
+				delete($hrefVolInfo->{$strVol});
+			}
 		}
 	}
 
