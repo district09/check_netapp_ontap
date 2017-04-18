@@ -1372,8 +1372,8 @@ sub space_threshold_helper {
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
 
-		# Test added by Didier Tollenaers 03/04/2015
-        	if ($hrefVolInfo->{$strVol}->{'state'} ne 'offline')  {
+		# Test added by Didier Tollenaers 03/04/2015 updated by Xavier Vallve 28/02/2017
+        	if ($hrefVolInfo->{$strVol}->{'state'} eq 'online')  {
 		
 			# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
 			if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
