@@ -114,7 +114,7 @@ sub calc_disk_health {
 		if (defined($hrefDiskInfo->{$strDisk}->{'scrubbing'}) && ($hrefDiskInfo->{$strDisk}->{'scrubbing'} eq "true")) {
 			my $strNewMessage = $strDisk . " is scrubbing";
                         $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 1);
+                        $intState = get_nagios_state($intState, 0);
 		}
 
 		if (defined($hrefDiskInfo->{$strDisk}->{'offline'}) && ($hrefDiskInfo->{$strDisk}->{'offline'} eq "true")) {
