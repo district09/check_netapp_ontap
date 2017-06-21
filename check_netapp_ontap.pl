@@ -1983,8 +1983,8 @@ if ($strOption eq "volume_health") {
                 $strWarning="80%";
         }
 
-        if (!(defined($strWarning))) {
-                $strWarning="95%";
+        if (!(defined($strCritical))) {
+                $strCritical="95%";
         }
 
 	($intState, $strOutput) = calc_space_health($hrefVolInfo, $strWarning, $strCritical);
@@ -2001,8 +2001,8 @@ if ($strOption eq "volume_health") {
                 $strWarning="80%";
         }
 
-        if (!(defined($strWarning))) {
-                $strWarning="95%";
+        if (!(defined($strCritical))) {
+                $strCritical="95%";
         }
 	($intState, $strOutput) = calc_space_health($hrefAggInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "snapshot_health") {
@@ -2018,8 +2018,8 @@ if ($strOption eq "volume_health") {
                 $strWarning="80%";
         }
 
-        if (!(defined($strWarning))) {
-                $strWarning="95%";
+        if (!(defined($strCritical))) {
+                $strCritical="95%";
         }
         ($intState, $strOutput) = calc_space_health($hrefSnapInfo, $strWarning, $strCritical);
 }  elsif ($strOption eq "quota_health") {
@@ -2035,8 +2035,8 @@ if ($strOption eq "volume_health") {
                 $strWarning="80%";
         }
 
-        if (!(defined($strWarning))) {
-                $strWarning="95%";
+        if (!(defined($strCritical))) {
+                $strCritical="95%";
         }
         ($intState, $strOutput) = calc_quota_health($hrefQuotaInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "snapmirror_health") {
