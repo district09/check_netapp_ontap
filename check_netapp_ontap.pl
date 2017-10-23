@@ -547,7 +547,11 @@ sub draw_html_table_interface_health {
 					}
 				}
 			} else {
-				$html_table .= "<td style=\"text-align: left; padding-left: 4px; padding-right: 6px;\">".$hrefInfo->{$lif}->{$attr}."</td>";
+                                if (defined $hrefInfo->{$lif}->{$attr}) {
+                                        $html_table .= "<td style=\"text-align: left; padding-left: 4px; padding-right: 6px;\">".$hrefInfo->{$lif}->{$attr}."</td>";
+                                } else {
+                                        $html_table .= "<td style=\"text-align: left; padding-left: 4px; padding-right: 6px;\"></td>";
+                                }
 			}
 		}
 		$html_table .= "</tr>";
