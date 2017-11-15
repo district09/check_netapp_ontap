@@ -1,32 +1,74 @@
 #!/usr/bin/perl
 
 # Script name:      check_netapp_ontap.pl
+<<<<<<< HEAD
 # Version:          v2.5.10
 # Original author:  Murphy John
 # Current author:   D'Haese Willem
+=======
+# Version:	        v2.07.170621
+# Original author:  Murphy John
+# Current author:   D'Haese Willem
+# Contributors:     Waipeng, Ditol, Charton Yannick
+>>>>>>> dev
 # Purpose:          Checks NetApp ontapi clusters for various problems, like volume, aggregate, snapshot, 
 #                   quota, snapmirror, filer hardware, port, interface, cluster and disk health, but also NetApp alarms
 # On Github:        https://github.com/willemdh/check_netapp_ontap
 # On OutsideIT:     http://outsideit.net/check-netapp-ontap
 # Recent History:
+<<<<<<< HEAD
 #	05/06/14 => Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
 #	06/06/14 => Updated script header and documentation, further testing with thresholds 
 #	10/06/14 => Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode for a syncing mirror, were causing errors
 #	11/06/14 => Merged John's 0.6 script with my fork after accepting the transferred project
 #	10/05/15 => Cleanup script documentation and merged pull request from Waipeng
+=======
+#     Release   |     Date      |    Authors    |    Description
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+#  v2.07.170621 |    21/06/17   | Y. Charton    | * indentations in the script now tab everywhere 
+#               |               |               | * new option --report/-r, allowing short(todo) / long(normal, current+multiline 
+#               |               |               |   for interface_health check) / html (current+html table for interface_health check). 
+#               |               |               |   Generated HTML table is also compatible with icingaweb2 (icingaweb2 classes used 
+#               |               |               |   so okay with icingaweb2 HTMLPurifier)
+#               |               |               | * new option --suboption/-s, allowing to specify what to check via the option. 
+#               |               |               |   Default is to check everything. Done for interface_health check, where you can 
+#               |               |               |   specify status, home-node, home-port. i.e.: -s "home-node,home-port" won't perform 
+#               |               |               |   the check of the status.
+#               |               |               | * add icinga2 command definition of the plugin
+#               |               |               | * fix default strCritical value not well set
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+#  v2.06.160831 |    31/08/16   | W. D'Haese    | Add option to check spare disks
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+#  v2.06.151101 |    01/11/15   | Ditol         | Added Ditol's code to exclude offline volumes
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+#               |    10/05/15   | Waipeng       | Cleanup script documentation and merged pull request from Waipeng
+#               |               | W. D'Haese    |
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+#               |    11/06/14   | Ditol         | Merged John's 0.6 script with my fork after accepting the transferred project
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+#               |    10/06/14   | W. D'Haese    | Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode 
+#               |               |               | for a syncing mirror, were causing errors
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+#               |    06/06/14   | W. D'Haese    | Updated script header and documentation, further testing with thresholds 
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+#               |    05/06/14   | W. D'Haese    | Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
+# --------------+---------------+---------------+------------------------------------------------------------------------------------
+>>>>>>> dev
 # Copyright:
-#	This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
-#	by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed 
-#	in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-#	PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public 
-#	License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed 
+#   in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
+#   PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public 
+#   License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use lib ("/usr/lib64/perl5/NetApp_SDK");
 use warnings;
 use strict;
 use NaServer;
 use NaElement;
 use Getopt::Long;
 use POSIX;
+#use Data::Dumper;
 
 ##############################################
 ## DISK HEALTH
@@ -34,36 +76,36 @@ use POSIX;
 
 sub get_disk_info {
 	my ($nahStorage, $strVHost) = @_;
-        my $nahDiskIterator = NaElement->new("storage-disk-get-iter");
+	my $nahDiskIterator = NaElement->new("storage-disk-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahDiskInfo = NaElement->new("storage-disk-info");
-        my $nahDiskOwnerInfo = NaElement->new("disk-ownership-info");
-        my $strActiveTag = "";
-        my %hshDiskInfo;
+	my $nahDiskInfo = NaElement->new("storage-disk-info");
+	my $nahDiskOwnerInfo = NaElement->new("disk-ownership-info");
+	my $strActiveTag = "";
+	my %hshDiskInfo;
 
 	if (defined($strVHost)) {
-                $nahDiskIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahDiskInfo);
+		$nahDiskIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahDiskInfo);
 		$nahDiskInfo->child_add($nahDiskOwnerInfo);
-                $nahDiskOwnerInfo->child_add_string("home-node", $strVHost);
-        }
+		$nahDiskOwnerInfo->child_add_string("home-node", $strVHost);
+	}
 
-        while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahDiskIterator->child_add_string("tag", $strActiveTag);
-                }
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahDiskIterator->child_add_string("tag", $strActiveTag);
+		}
 
-                $nahDiskIterator->child_add_string("max-records", 600);
-                my $nahResponse = $nahStorage->invoke_elem($nahDiskIterator);
-                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+		$nahDiskIterator->child_add_string("max-records", 600);
+		my $nahResponse = $nahStorage->invoke_elem($nahDiskIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
-                foreach my $nahDisk ($nahResponse->child_get("attributes-list")->children_get()) {
+		foreach my $nahDisk ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strDiskName = $nahDisk->child_get_string("disk-name");
 			$hshDiskInfo{$strDiskName}{'home-node'} = $nahDisk->child_get("disk-ownership-info")->child_get_string("home-node-name");
 			$hshDiskInfo{$strDiskName}{'current-node'} = $nahDisk->child_get("disk-ownership-info")->child_get_string("owner-node-name");
@@ -73,11 +115,11 @@ sub get_disk_info {
 				$hshDiskInfo{$strDiskName}{'prefailed'} = $nahDisk->child_get("disk-raid-info")->child_get("disk-aggregate-info")->child_get_string("is-prefailed");
 				$hshDiskInfo{$strDiskName}{'reconstructing'} = $nahDisk->child_get("disk-raid-info")->child_get("disk-aggregate-info")->child_get_string("is-reconstructing");
 			} else {
-                        	$hshDiskInfo{$strDiskName}{'scrubbing'} = "false";
-                        	$hshDiskInfo{$strDiskName}{'offline'} = "false";
-                        	$hshDiskInfo{$strDiskName}{'prefailed'} = "false";
-                        	$hshDiskInfo{$strDiskName}{'reconstructing'} = "false";
-                	}
+				$hshDiskInfo{$strDiskName}{'scrubbing'} = "false";
+				$hshDiskInfo{$strDiskName}{'offline'} = "false";
+				$hshDiskInfo{$strDiskName}{'prefailed'} = "false";
+				$hshDiskInfo{$strDiskName}{'reconstructing'} = "false";
+			}
 
 			if ($nahDisk->child_get("disk-raid-info")->child_get("disk-outage-info")) {
 				$hshDiskInfo{$strDiskName}{'outage'} = $nahDisk->child_get("disk-raid-info")->child_get("disk-outage-info")->child_get_string("reason");
@@ -92,9 +134,9 @@ sub get_disk_info {
 
 sub calc_disk_health {
 	my $hrefDiskInfo = shift;
-        my $intState = 0;
+	my $intState = 0;
 	my $intObjectCount = 0;
-        my $strOutput;
+	my $strOutput;
 
 	my @aryFDRWarning = ("bypassed", "label version", "labeled broken", "LUN resized", "missing", "predict failure", "rawsize shrank", "recovering", "sanitizing", "unassigned");
 	my @aryFDRCritical = ("bad label", "failed", "init failed", "not responding", "unknown");
@@ -111,31 +153,31 @@ sub calc_disk_health {
 
 		if (defined($hrefDiskInfo->{$strDisk}->{'scrubbing'}) && ($hrefDiskInfo->{$strDisk}->{'scrubbing'} eq "true")) {
 			my $strNewMessage = $strDisk . " is scrubbing";
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 1);
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 0);
 		}
 
 		if (defined($hrefDiskInfo->{$strDisk}->{'offline'}) && ($hrefDiskInfo->{$strDisk}->{'offline'} eq "true")) {
 			my $strNewMessage = $strDisk . " is offline";
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 2);
-                }
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 2);
+		}
 
 		if (defined($hrefDiskInfo->{$strDisk}->{'prefailed'}) && ($hrefDiskInfo->{$strDisk}->{'prefailed'} eq "true")) {
 			my $strNewMessage = $strDisk . " is prefailed";
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 1);
-                }
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 1);
+		}
 
 		if (defined($hrefDiskInfo->{$strDisk}->{'reconstructing'}) && ($hrefDiskInfo->{$strDisk}->{'reconstructing'} eq "true")) {
 			my $strNewMessage = $strDisk . " is reconstructing";
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 1);
-                }
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 1);
+		}
 
 		if ($hrefDiskInfo->{$strDisk}->{'outage'} ne "ok") {
 			my $strNewMessage = $strDisk . " state is " . $hrefDiskInfo->{$strDisk}->{'outage'};
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
 			
 			my $bStateSet = 0;
 			foreach my $strEntry (@aryFDRWarning) {
@@ -148,17 +190,160 @@ sub calc_disk_health {
 
 			if (!$bStateSet) {
 				foreach my $strEntry (@aryFDRCritical) {
-                                	if ($hrefDiskInfo->{$strDisk}->{'outage'} eq $strEntry) {
-                                        	$intState = get_nagios_state($intState, 2);
-                                	}
-                        	}
+					if ($hrefDiskInfo->{$strDisk}->{'outage'} eq $strEntry) {
+						$intState = get_nagios_state($intState, 2);
+					}
+				}
 			}
-                }
+		}
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
-        }
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
+
+	return $intState, $strOutput;
+}
+
+##############################################
+## SPARE HEALTH
+##############################################
+
+sub get_spare_info {
+	my ($nahStorage, $strVHost, $strWarning, $strCritical) = @_;
+	my $nahSpareIterator = NaElement->new("storage-disk-get-iter");
+	my $nahQuery = NaElement->new("query");
+	my $nahSpareInfo = NaElement->new("storage-disk-info");
+	my $nahSpareOwnerInfo = NaElement->new("disk-ownership-info");
+	my $strActiveTag = "";
+	my %hshSpareInfo;
+
+	if (defined($strVHost)) {
+		$nahSpareIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahSpareInfo);
+		$nahSpareInfo->child_add($nahSpareOwnerInfo);
+		$nahSpareOwnerInfo->child_add_string("home-node", $strVHost);
+	}
+
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahSpareIterator->child_add_string("tag", $strActiveTag);
+		}
+
+		$nahSpareIterator->child_add_string("max-records", 600);
+		my $nahResponse = $nahStorage->invoke_elem($nahSpareIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
+
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
+
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
+
+		SPARE:
+		foreach my $nahSpare ($nahResponse->child_get("attributes-list")->children_get()) {
+			my $strSpareName = $nahSpare->child_get_string("disk-name");
+
+			my $raidInfo = $nahSpare->child_get("disk-raid-info");
+			my $containertype = $raidInfo->child_get_string("container-type");
+
+			if (!defined($containertype)) {
+				next SPARE;
+			} elsif ($containertype eq "spare" || $containertype eq "unassigned") {
+				my $nodeName = $raidInfo->child_get_string("active-node-name");
+				my $spareInfo = $raidInfo->child_get("disk-spare-info");
+				my $zeroed = $spareInfo->child_get_string('is-zeroed');
+
+				$hshSpareInfo{$nodeName}{$strSpareName}{'status'} = $containertype;
+				$hshSpareInfo{$nodeName}{$strSpareName}{'zeroed'} = $zeroed;
+			} else {
+				next SPARE;
+			}
+		}
+	}
+
+	return \%hshSpareInfo;
+}
+
+sub calc_spare_health {
+	my ($hrefSpareInfo, $strVHost, $strWarning, $strCritical) = @_;
+	my $intState = 0;
+	my $intObjectCount = 0;
+	my $strOutput;
+	my ($unknownStatus, $okStatus, $warnStatus, $critStatus) = (0, 0, 0, 0);
+
+	NODE:
+	foreach my $node (keys %$hrefSpareInfo) {
+		if (defined($strVHost) && $node ne $strVHost) {
+			next NODE;
+		}
+
+		my ($spareCount, $unassignedCount, $unknownCount, $notZeroedCount) = (0, 0, 0, 0);
+		my $strNewMessage;
+
+		foreach my $strSpare (keys %{$hrefSpareInfo->{$node}}) {
+			$intObjectCount++;
+	
+			my $zeroedStatus = $hrefSpareInfo->{$node}->{$strSpare}->{'zeroed'};
+			if (defined($zeroedStatus) && $zeroedStatus ne "true") {
+				$notZeroedCount++;
+			}
+			my $status = $hrefSpareInfo->{$node}->{$strSpare}->{'status'};
+			if (defined($status && $status eq "spare")) {
+				$spareCount++;
+			} elsif (defined($status && $status eq "unassigned")) {
+				$unassignedCount++;
+			} else {
+				$unknownCount++;
+			}
+		}
+
+		if ($spareCount < $strCritical) {
+			$critStatus++;
+		} elsif ($spareCount < $strWarning) {
+			$warnStatus++;
+		} elsif ($spareCount >= $strWarning) {
+			$okStatus++;
+		} else {
+			$unknownStatus++;
+		}
+
+		$strNewMessage = sprintf("%s: %d spare disks (%s not zeroed) and %s unassigned", $node, $spareCount, $notZeroedCount, $unassignedCount);
+		$strOutput = get_nagios_description($strOutput, $strNewMessage);
+	}
+
+	# No spare disk case
+	if ($intObjectCount == 0) {
+		if ($intObjectCount < $strCritical) {
+			$critStatus++;
+		} elsif ($intObjectCount < $strWarning) {
+			$warnStatus++;
+		} elsif ($intObjectCount >= $strWarning) {
+			$okStatus++;
+		} else {
+			$unknownStatus++;
+		}
+
+		my $strNewMessage = sprintf("No spare disk found on nodes");
+		$strOutput = get_nagios_description($strOutput, $strNewMessage);
+	}
+
+	# No output case
+	if (!(defined($strOutput))) {
+		$unknownStatus++;
+		my $strNewMessage = sprintf("No output");
+		$strOutput = get_nagios_description($strOutput, $strNewMessage);
+	}
+
+	if ($critStatus > 0) {
+		$intState = get_nagios_state($intState, 2);
+	} elsif ($warnStatus > 0) {
+		$intState = get_nagios_state($intState, 1);
+	} elsif ($okStatus > 0) {
+		$intState = get_nagios_state($intState, 0);
+	} else {
+		$intState = get_nagios_state($intState, 3);
+	}
 
 	return $intState, $strOutput;
 }
@@ -168,45 +353,45 @@ sub calc_disk_health {
 ##############################################
 
 sub get_port_health {
-        my ($nahStorage, $strVHost) = @_;
-        my $nahPortIterator = NaElement->new("net-port-get-iter");
-        my $nahQuery = NaElement->new("query");
-        my $nahPortInfo = NaElement->new("net-port-info");
-        my $strActiveTag = "";
-        my %hshPortInfo;
+	my ($nahStorage, $strVHost) = @_;
+	my $nahPortIterator = NaElement->new("net-port-get-iter");
+	my $nahQuery = NaElement->new("query");
+	my $nahPortInfo = NaElement->new("net-port-info");
+	my $strActiveTag = "";
+	my %hshPortInfo;
 
-        if (defined($strVHost)) {
-                $nahPortIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahPortInfo);
-                $nahPortInfo->child_add_string("node", $strVHost);
-        }
+	if (defined($strVHost)) {
+		$nahPortIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahPortInfo);
+		$nahPortInfo->child_add_string("node", $strVHost);
+	}
 
-        while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahPortIterator->child_add_string("tag", $strActiveTag);
-                }
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahPortIterator->child_add_string("tag", $strActiveTag);
+		}
 
-                $nahPortIterator->child_add_string("max-records", 100);
-                my $nahResponse = $nahStorage->invoke_elem($nahPortIterator);
-                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+		$nahPortIterator->child_add_string("max-records", 100);
+		my $nahResponse = $nahStorage->invoke_elem($nahPortIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
-                foreach my $nahPort ($nahResponse->child_get("attributes-list")->children_get()) {
-                        my $strName = $nahPort->child_get_string("node") . "/" . $nahPort->child_get_string("port");
-                        if ($nahPort->child_get_string("is-administrative-up") eq "true") {
-                                $hshPortInfo{$strName}{'admin-status'} = "up";
-                        } else {
-                                $hshPortInfo{$strName}{'admin-status'} = "down";
-                        }
+		foreach my $nahPort ($nahResponse->child_get("attributes-list")->children_get()) {
+			my $strName = $nahPort->child_get_string("node") . "/" . $nahPort->child_get_string("port");
+			if ($nahPort->child_get_string("is-administrative-up") eq "true") {
+				$hshPortInfo{$strName}{'admin-status'} = "up";
+			} else {
+				$hshPortInfo{$strName}{'admin-status'} = "down";
+			}
 			
-                        $hshPortInfo{$strName}{'link-status'} = $nahPort->child_get_string("link-status");
-                }
-        }
+			$hshPortInfo{$strName}{'link-status'} = $nahPort->child_get_string("link-status");
+		}
+	}
 	
 	return \%hshPortInfo;
 }
@@ -217,32 +402,32 @@ sub get_port_health {
 
 sub get_interface_health {
 	my ($nahStorage, $strVHost) = @_;
-        my $nahIntIterator = NaElement->new("net-interface-get-iter");
+	my $nahIntIterator = NaElement->new("net-interface-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahIntInfo = NaElement->new("net-interface-info");
-        my $strActiveTag = "";
-        my %hshInterfaceInfo;
+	my $nahIntInfo = NaElement->new("net-interface-info");
+	my $strActiveTag = "";
+	my %hshInterfaceInfo;
 
 	if (defined($strVHost)) {
-                $nahIntIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahIntInfo);
-                $nahIntInfo->child_add_string("vserver", $strVHost);
-        }
+		$nahIntIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahIntInfo);
+		$nahIntInfo->child_add_string("vserver", $strVHost);
+	}
 
 	while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahIntIterator->child_add_string("tag", $strActiveTag);
-                }
+		if ($strActiveTag ne "") {
+			$nahIntIterator->child_add_string("tag", $strActiveTag);
+		}
 
-                $nahIntIterator->child_add_string("max-records", 100);
-                my $nahResponse = $nahStorage->invoke_elem($nahIntIterator);
-                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+		$nahIntIterator->child_add_string("max-records", 100);
+		my $nahResponse = $nahStorage->invoke_elem($nahIntIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
 		foreach my $nahInt ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strName = $nahInt->child_get_string("home-node") . "/" . $nahInt->child_get_string("vserver") . $nahInt->child_get_string("interface-name");
@@ -252,55 +437,142 @@ sub get_interface_health {
 			$hshInterfaceInfo{$strName}{'current-node'} = $nahInt->child_get_string("current-node");
 			$hshInterfaceInfo{$strName}{'home-port'} = $nahInt->child_get_string("home-port");
 			$hshInterfaceInfo{$strName}{'current-port'} = $nahInt->child_get_string("current-port");
-                }
-        }
+		}
+	}
 
 	return \%hshInterfaceInfo;
 }
 
 sub calc_interface_health {
-	my $hrefInterfaceInfo = shift;
-        my $intState = 0;
+	my ($hrefInterfaceInfo, $strWarning, $strCritical, $strSuboption, $strReport) = @_;
+	my $intState = 0;
 	my $intObjectCount = 0;
-        my $strOutput;
+	my $strOutput;
+	my $strMultiline;
+	my $intNbIncorrectStatus = 0;
+	my $intNbIncorrectNode = 0;
+	my $intNbIncorrectPort = 0;
+	my ($strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort) = (1) x 3;
+	if (defined $strSuboption) {
+		$strCheckLIFStatus = $strCheckLIFHomeNode = $strCheckLIFHomePort = 0;
+		my @arySuboption = split(",",$strSuboption);
+		if ("status" ~~ @arySuboption) { $strCheckLIFStatus = 1; }
+		if ("home-node" ~~ @arySuboption) { $strCheckLIFHomeNode = 1; }
+		if ("home-port" ~~ @arySuboption) { $strCheckLIFHomePort = 1; }
+	} 
 
 	foreach my $strInt (keys %$hrefInterfaceInfo) {
 		$intObjectCount = $intObjectCount + 1;
-		if (!($hrefInterfaceInfo->{$strInt}->{'admin-status'} eq $hrefInterfaceInfo->{$strInt}->{'link-status'})) {
-			my $strNewMessage = $strInt . " is " . $hrefInterfaceInfo->{$strInt}->{'link-status'} . " but admin status is " . $hrefInterfaceInfo->{$strInt}->{'admin-status'};
-			$strOutput = get_nagios_description($strOutput, $strNewMessage);
 
-			if ($hrefInterfaceInfo->{$strInt}->{'link-status'} eq "down") {
-				$intState = get_nagios_state($intState, 2);
-			} elsif ($hrefInterfaceInfo->{$strInt}->{'link-status'} eq "up") {
-				$intState = get_nagios_state($intState, 1);
-			} elsif ($hrefInterfaceInfo->{$strInt}->{'link-status'} eq "unknown") {
-				$intState = get_nagios_state($intState, 3);
-			} 
-		}
-
-		if (defined($hrefInterfaceInfo->{$strInt}->{'home-node'}) && defined($hrefInterfaceInfo->{$strInt}->{'current-node'})) {
-			if (!($hrefInterfaceInfo->{$strInt}->{'home-node'} eq $hrefInterfaceInfo->{$strInt}->{'current-node'})) {
-				my $strNewMessage = $strInt . " home is " . $hrefInterfaceInfo->{$strInt}->{'home-node'} . " but current node is " . $hrefInterfaceInfo->{$strInt}->{'current-node'};
+		if ($strCheckLIFStatus) {
+			if (!($hrefInterfaceInfo->{$strInt}->{'admin-status'} eq $hrefInterfaceInfo->{$strInt}->{'link-status'})) {
+				my $strNewMessage = $strInt . " is " . $hrefInterfaceInfo->{$strInt}->{'link-status'} . " but admin status is " . $hrefInterfaceInfo->{$strInt}->{'admin-status'};
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-				$intState = get_nagios_state($intState, 1);
+	
+				if ($hrefInterfaceInfo->{$strInt}->{'link-status'} eq "down") {
+					$intState = get_nagios_state($intState, 2);
+					$intNbIncorrectStatus = $intNbIncorrectStatus + 1;
+				} elsif ($hrefInterfaceInfo->{$strInt}->{'link-status'} eq "up") {
+					$intState = get_nagios_state($intState, 1);
+				} elsif ($hrefInterfaceInfo->{$strInt}->{'link-status'} eq "unknown") {
+					$intState = get_nagios_state($intState, 3);
+				} 
 			}
 		}
 
-		if (defined($hrefInterfaceInfo->{$strInt}->{'home-port'}) && defined($hrefInterfaceInfo->{$strInt}->{'current-port'})) {
-                        if (!($hrefInterfaceInfo->{$strInt}->{'home-port'} eq $hrefInterfaceInfo->{$strInt}->{'current-port'})) {
-                                my $strNewMessage = $strInt . " home is " . $hrefInterfaceInfo->{$strInt}->{'home-port'} . " but current port is " . $hrefInterfaceInfo->{$strInt}->{'current-port'};
-                                $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                $intState = get_nagios_state($intState, 1);
-                        }
-                }
+		if ($strCheckLIFHomeNode) {
+			if (defined($hrefInterfaceInfo->{$strInt}->{'home-node'}) && defined($hrefInterfaceInfo->{$strInt}->{'current-node'})) {
+				if (!($hrefInterfaceInfo->{$strInt}->{'home-node'} eq $hrefInterfaceInfo->{$strInt}->{'current-node'})) {
+					my $strNewMessage = $strInt . " home is " . $hrefInterfaceInfo->{$strInt}->{'home-node'} . " but current node is " . $hrefInterfaceInfo->{$strInt}->{'current-node'};
+					$strOutput = get_nagios_description($strOutput, $strNewMessage);
+					$strMultiline = get_nagios_multiline($strMultiline, $strNewMessage);
+					$intState = get_nagios_state($intState, 1);
+					$intNbIncorrectNode = $intNbIncorrectNode + 1;
+				}
+			}
+		}
+
+		if ($strCheckLIFHomePort) {
+			if (defined($hrefInterfaceInfo->{$strInt}->{'home-port'}) && defined($hrefInterfaceInfo->{$strInt}->{'current-port'})) {
+				if (!($hrefInterfaceInfo->{$strInt}->{'home-port'} eq $hrefInterfaceInfo->{$strInt}->{'current-port'})) {
+					my $strNewMessage = $strInt . " home is " . $hrefInterfaceInfo->{$strInt}->{'home-port'} . " but current port is " . $hrefInterfaceInfo->{$strInt}->{'current-port'};
+					$strOutput = get_nagios_description($strOutput, $strNewMessage);
+					$strMultiline = get_nagios_multiline($strMultiline, $strNewMessage);
+					$intState = get_nagios_state($intState, 1);
+					$intNbIncorrectPort = $intNbIncorrectPort + 1;
+				}
+			}
+		}
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
-        }
+		$strOutput = "OK - No problem found ($intObjectCount checked)|";
+	} else {
+		if ($strReport eq "short" || $strReport eq "long") {
+			$strOutput .= "|\n$strMultiline";
+		} elsif ($strReport eq "html") {
+			my $strHTML = draw_html_table_interface_health($hrefInterfaceInfo, $strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort);
+			$strOutput .= "|\n$strHTML";
+		} else {
+			$strOutput .= "|\n"
+		}
+	}
 
-        return $intState, $strOutput;
+	return $intState, $strOutput;
+}
+
+sub draw_html_table_interface_health {
+	my ($hrefInfo, $strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort) = @_;
+	my @headers = qw(LIF admin-status link-status home-node current-node home-port current-port);
+	my @columns = qw(admin-status link-status home-node current-node home-port current-port);
+	my $html_table="";
+	$html_table .= "<table class=\"common-table\" style=\"border-collapse:collapse; border: 1px solid black;\">";
+	$html_table .= "<tr>";
+	foreach (@headers) {
+		$html_table .= "<th style=\"text-align: left; padding-left: 4px; padding-right: 6px;\">".$_."</th>";
+	}
+	$html_table .= "</tr>";
+	foreach my $lif (sort {lc $a cmp lc $b} keys %$hrefInfo) {
+#	foreach my $lif (keys %$hrefInfo) {
+		$html_table .= "<tr>";
+		$html_table .= "<tr style=\"border: 1px solid black;\">";
+		$html_table .= "<td style=\"text-align: left; padding-left: 4px; padding-right: 6px; background-color: #acacac;\">".$lif."</td>";
+		foreach my $attr (@columns) {
+			if ($strCheckLIFStatus && $attr eq "link-status") {
+				if ($hrefInfo->{$lif}->{"admin-status"} eq "up" && $hrefInfo->{$lif}->{"link-status"} eq "down"){
+					$html_table .= "<td class=\"state-critical\" style=\"text-align: left; padding-left: 4px; padding-right: 6px; background-color: #f83838\">".$hrefInfo->{$lif}->{$attr}."</td>";
+				} else {
+					$html_table .= "<td class=\"state-ok\" style=\"text-align: left; padding-left: 4px; padding-right: 6px; background-color: #33ff00\">".$hrefInfo->{$lif}->{$attr}."</td>";
+				}
+			} elsif ($strCheckLIFHomeNode && $attr eq "current-node") {
+				if (defined($hrefInfo->{$lif}->{'home-node'}) && defined($hrefInfo->{$lif}->{'current-node'})) {
+					if (!($hrefInfo->{$lif}->{'home-node'} eq $hrefInfo->{$lif}->{'current-node'})) {
+						$html_table .= "<td class=\"state-critical\" style=\"text-align: left; padding-left: 4px; padding-right: 6px; background-color: #f83838\">".$hrefInfo->{$lif}->{$attr}."</td>";
+					} else {
+						$html_table .= "<td class=\"state-ok\" style=\"text-align: left; padding-left: 4px; padding-right: 6px; background-color: #33ff00\">".$hrefInfo->{$lif}->{$attr}."</td>";
+					}
+				}
+			} elsif ($strCheckLIFHomePort && $attr eq "current-port") {
+				if (defined($hrefInfo->{$lif}->{'home-port'}) && defined($hrefInfo->{$lif}->{'current-port'})) {
+					if (!($hrefInfo->{$lif}->{'home-port'} eq $hrefInfo->{$lif}->{'current-port'})) {
+						$html_table .= "<td class=\"state-critical\" style=\"text-align: left; padding-left: 4px; padding-right: 6px; background-color: #f83838\">".$hrefInfo->{$lif}->{$attr}."</td>";
+					} else {
+						$html_table .= "<td class=\"state-ok\" style=\"text-align: left; padding-left: 4px; padding-right: 6px; background-color: #33ff00\">".$hrefInfo->{$lif}->{$attr}."</td>";
+					}
+				}
+			} else {
+                                if (defined $hrefInfo->{$lif}->{$attr}) {
+                                        $html_table .= "<td style=\"text-align: left; padding-left: 4px; padding-right: 6px;\">".$hrefInfo->{$lif}->{$attr}."</td>";
+                                } else {
+                                        $html_table .= "<td style=\"text-align: left; padding-left: 4px; padding-right: 6px;\"></td>";
+                                }
+			}
+		}
+		$html_table .= "</tr>";
+	}
+	$html_table .= "</table>\n";
+
+	return $html_table;
 }
 
 ##############################################
@@ -309,32 +581,32 @@ sub calc_interface_health {
 
 sub get_cluster_health {
 	my ($nahStorage, $strVHost) = @_;
-        my $nahClusterIterator = NaElement->new("cluster-peer-health-info-get-iter");
+	my $nahClusterIterator = NaElement->new("cluster-peer-health-info-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahClusterInfo = NaElement->new("cluster-peer-health-info");
-        my $strActiveTag = "";
-        my %hshClusterInfo;
+	my $nahClusterInfo = NaElement->new("cluster-peer-health-info");
+	my $strActiveTag = "";
+	my %hshClusterInfo;
 
 	if (defined($strVHost)) {
-                $nahClusterIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahClusterInfo);
-                $nahClusterInfo->child_add_string("originating-node", $strVHost);
-        }
+		$nahClusterIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahClusterInfo);
+		$nahClusterInfo->child_add_string("originating-node", $strVHost);
+	}
 
 	while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahClusterIterator->child_add_string("tag", $strActiveTag);
-                }
+		if ($strActiveTag ne "") {
+			$nahClusterIterator->child_add_string("tag", $strActiveTag);
+		}
 
-                $nahClusterIterator->child_add_string("max-records", 100);
-                my $nahResponse = $nahStorage->invoke_elem($nahClusterIterator);
-                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+		$nahClusterIterator->child_add_string("max-records", 100);
+		my $nahResponse = $nahStorage->invoke_elem($nahClusterIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
 		foreach my $nahNode ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strName = $nahNode->child_get_string("originating-node");
@@ -350,32 +622,32 @@ sub get_cluster_health {
 
 sub calc_cluster_health {
 	my $hrefClusterInfo = shift;
-        my $intState = 0;
+	my $intState = 0;
 	my $intObjectCount = 0;
-        my $strOutput;
+	my $strOutput;
 
-        foreach my $strNode (keys %$hrefClusterInfo) {
+	foreach my $strNode (keys %$hrefClusterInfo) {
 		$intObjectCount = $intObjectCount + 1;
 		if ($hrefClusterInfo->{$strNode}->{'destination-available'} eq "false") {
 			my $strNewMessage = $strNode . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " destination node is unavailable";
 			$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 2);
+			$intState = get_nagios_state($intState, 2);
 		} elsif ($hrefClusterInfo->{$strNode}->{'in-quorum'} eq "false") {
 			my $strNewMessage = $strNode . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " originating node is not in quorum";
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 2);
-                } elsif ($hrefClusterInfo->{$strNode}->{'cluster-healthy'} eq "false") {
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 2);
+		} elsif ($hrefClusterInfo->{$strNode}->{'cluster-healthy'} eq "false") {
 			my $strNewMessage = $strNode . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " cluster peer relationship is unhealthy";
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 2);
-                }
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 2);
+		}
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
-        }
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
 
-        return $intState, $strOutput;	
+	return $intState, $strOutput;	
 }
 
 ##############################################
@@ -384,59 +656,59 @@ sub calc_cluster_health {
 
 sub get_netapp_alarms {
 	my ($nahStorage, $strVHost) = @_;
-        my $nahAlarmIterator = NaElement->new("dashboard-alarm-get-iter");
+	my $nahAlarmIterator = NaElement->new("dashboard-alarm-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahDashInfo = NaElement->new("dashboard-alarm-info");
-        my $strActiveTag = "";
-        my %hshAlarms;
+	my $nahDashInfo = NaElement->new("dashboard-alarm-info");
+	my $strActiveTag = "";
+	my %hshAlarms;
 
 	if (defined($strVHost)) {
-                $nahAlarmIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahDashInfo);
-                $nahDashInfo->child_add_string("node", $strVHost);
-        }
+		$nahAlarmIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahDashInfo);
+		$nahDashInfo->child_add_string("node", $strVHost);
+	}
 
-        while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahAlarmIterator->child_add_string("tag", $strActiveTag);
-                }
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahAlarmIterator->child_add_string("tag", $strActiveTag);
+		}
 
-                $nahAlarmIterator->child_add_string("max-records", 100);
-                my $nahResponse = $nahStorage->invoke_elem($nahAlarmIterator);
-                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+		$nahAlarmIterator->child_add_string("max-records", 100);
+		my $nahResponse = $nahStorage->invoke_elem($nahAlarmIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
 		foreach my $nahAlarm ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strName = $nahAlarm->child_get_string("node") . "/" . $nahAlarm->child_get_string("object-name") . "/" . $nahAlarm->child_get_string("dashboard-metric-type");
 			$hshAlarms{$strName}{'value'} = $nahAlarm->child_get_string("last-value");
 			$hshAlarms{$strName}{'state'} = $nahAlarm->child_get_string("state");
 		}
-        }
+	}
 
 	$nahAlarmIterator = NaElement->new("diagnosis-alert-get-iter");
-        $strActiveTag = "";
+	$strActiveTag = "";
 
 	while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahAlarmIterator->child_add_string("tag", $strActiveTag);
-                }
+		if ($strActiveTag ne "") {
+			$nahAlarmIterator->child_add_string("tag", $strActiveTag);
+		}
 
-                $nahAlarmIterator->child_add_string("max-records", 100);
-                my $nahResponse = $nahStorage->invoke_elem($nahAlarmIterator);
-                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+		$nahAlarmIterator->child_add_string("max-records", 100);
+		my $nahResponse = $nahStorage->invoke_elem($nahAlarmIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
-                foreach my $nahAlarm ($nahResponse->child_get("attributes-list")->children_get()) {
+		foreach my $nahAlarm ($nahResponse->child_get("attributes-list")->children_get()) {
 			if (!($nahAlarm->child_get_string("acknowledge") eq "true" || $nahAlarm->child_get_string("suppress") eq "true")) {
 				my $strName = $nahAlarm->child_get_string("node") . "/" . $nahAlarm->child_get_string("alerting-resource-name") . "/" . $nahAlarm->child_get_string("subsystem");
 				$hshAlarms{$strName}{'value'} = $nahAlarm->child_get_string("probable-cause-description");
@@ -450,28 +722,28 @@ sub get_netapp_alarms {
 
 sub calc_netapp_alarm_health {
 	my $hrefAlarmsInfo = shift;
-        my $intState = 0;
+	my $intState = 0;
 	my $intObjectCount = 0;
-        my $strOutput;
+	my $strOutput;
 
 	foreach my $strAlarm (keys %$hrefAlarmsInfo) {
 		$intObjectCount = $intObjectCount + 1;
 		if ($hrefAlarmsInfo->{$strAlarm}->{'state'} eq "critical") {
 			my $strNewMessage = $strAlarm . " " . $hrefAlarmsInfo->{$strAlarm}->{'value'};
 			$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 2);
+			$intState = get_nagios_state($intState, 2);
 		} elsif ($hrefAlarmsInfo->{$strAlarm}->{'state'} ne "ok") {
 			my $strNewMessage = $strAlarm . " " . $hrefAlarmsInfo->{$strAlarm}->{'value'};
 			$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 1);
+			$intState = get_nagios_state($intState, 1);
 		}
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
-        }
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
 
-        return $intState, $strOutput;
+	return $intState, $strOutput;
 }
 
 ##############################################
@@ -482,31 +754,30 @@ sub get_filer_hardware {
 	my ($nahStorage, $strVHost) = @_; 
 	my $nahFilerIterator = NaElement->new("system-node-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahNodeInfo = NaElement->new("node-details-info");
-        my $strActiveTag = "";
-        my %hshFilerHardware;
+	my $nahNodeInfo = NaElement->new("node-details-info");
+	my $strActiveTag = "";
+	my %hshFilerHardware;
 
 	if (defined($strVHost)) {
-                $nahFilerIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahNodeInfo);
-                $nahNodeInfo->child_add_string("node", $strVHost);
-        }
-
+		$nahFilerIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahNodeInfo);
+		$nahNodeInfo->child_add_string("node", $strVHost);
+	}
 
 	while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahFilerIterator->child_add_string("tag", $strActiveTag);
-                }
+		if ($strActiveTag ne "") {
+			$nahFilerIterator->child_add_string("tag", $strActiveTag);
+		}
 
 		$nahFilerIterator->child_add_string("max-records", 100);
-                my $nahResponse = $nahStorage->invoke_elem($nahFilerIterator);
-                validate_ontapi_response($nahResponse, "Failed filer health query: ");
+		my $nahResponse = $nahStorage->invoke_elem($nahFilerIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
 		foreach my $nahFilerObj ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strNodeName = $nahFilerObj->child_get_string("node");
@@ -515,14 +786,14 @@ sub get_filer_hardware {
 			$hshFilerHardware{$strNodeName . "/fan"}{'message'} = $nahFilerObj->child_get_string("env-failed-fan-message");
 
 			$hshFilerHardware{$strNodeName . "/psu"}{'object'} = "psu";
-                        $hshFilerHardware{$strNodeName . "/psu"}{'count'} = $nahFilerObj->child_get_string("env-failed-power-supply-count");
-                        $hshFilerHardware{$strNodeName . "/psu"}{'message'} = $nahFilerObj->child_get_string("env-failed-power-supply-message");
+			$hshFilerHardware{$strNodeName . "/psu"}{'count'} = $nahFilerObj->child_get_string("env-failed-power-supply-count");
+			$hshFilerHardware{$strNodeName . "/psu"}{'message'} = $nahFilerObj->child_get_string("env-failed-power-supply-message");
 
 			$hshFilerHardware{$strNodeName . "/temp"}{'object'} = "temp";
-                        $hshFilerHardware{$strNodeName . "/temp"}{'count'} = $nahFilerObj->child_get_string("env-over-temperature");
+			$hshFilerHardware{$strNodeName . "/temp"}{'count'} = $nahFilerObj->child_get_string("env-over-temperature");
 
 			$hshFilerHardware{$strNodeName . "/battery"}{'object'} = "battery";
-                        $hshFilerHardware{$strNodeName . "/battery"}{'message'} = $nahFilerObj->child_get_string("nvram-battery-status");
+			$hshFilerHardware{$strNodeName . "/battery"}{'message'} = $nahFilerObj->child_get_string("nvram-battery-status");
 		}
 	}
 
@@ -531,18 +802,18 @@ sub get_filer_hardware {
 
 sub calc_filer_hardware_health {
 	my ($hrefFilerInfo, $strWarning, $strCritical) = @_;
-        my $intState = 0;
+	my $intState = 0;
 	my $intObjectCount = 0;
-        my $strOutput;
+	my $strOutput;
 	my (@aryWarning, @aryCritical);
 
 	if (defined($strWarning)) {
-                @aryWarning = split(",", $strWarning);
-        }
+		@aryWarning = split(",", $strWarning);
+	}
 
-        if (defined($strCritical)) {
-                @aryCritical = split(",", $strCritical);
-        }
+	if (defined($strCritical)) {
+		@aryCritical = split(",", $strCritical);
+	}
 
 	foreach my $strFilerEntry (keys %$hrefFilerInfo) { 
 		$intObjectCount = $intObjectCount + 1;
@@ -553,59 +824,59 @@ sub calc_filer_hardware_health {
 					if ($strWarnThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
 						$intStateSet = 1;
 					}
-        			}
+				}
 
-        			foreach my $strCritThresh (@aryCritical) {
+				foreach my $strCritThresh (@aryCritical) {
 					if ($strCritThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
-                                                $intStateSet = 2;
-                                        }
-        			}
+						$intStateSet = 2;
+					}
+				}
 
 				if ($intStateSet > 0) {
 					my $strNewMessage = $strFilerEntry . " has " . $hrefFilerInfo->{$strFilerEntry}{'count'} . " failed fans";
-                                	$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                	$intState = get_nagios_state($intState, $intStateSet);
+					$strOutput = get_nagios_description($strOutput, $strNewMessage);
+					$intState = get_nagios_state($intState, $intStateSet);
 				}
 			}
 		} elsif ($hrefFilerInfo->{$strFilerEntry}{'object'} eq "psu") {
 			if ($hrefFilerInfo->{$strFilerEntry}{'count'} > 0) {
 				my $intStateSet = 2;
-                                foreach my $strWarnThresh (@aryWarning) {
-                                        if ($strWarnThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
-                                                $intStateSet = 1;
-                                        }
-                                }
+				foreach my $strWarnThresh (@aryWarning) {
+					if ($strWarnThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
+						$intStateSet = 1;
+					}
+				}
 
-                                foreach my $strCritThresh (@aryCritical) {
-                                        if ($strCritThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
-                                                $intStateSet = 2;
-                                        }
-                                }
+				foreach my $strCritThresh (@aryCritical) {
+					if ($strCritThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
+						$intStateSet = 2;
+					}
+				}
 
 				if ($intStateSet > 0) {	
 					my $strNewMessage = $strFilerEntry . " has " . $hrefFilerInfo->{$strFilerEntry}{'count'} . " failed power supplies";
-                                	$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                	$intState = get_nagios_state($intState, $intStateSet);
+					$strOutput = get_nagios_description($strOutput, $strNewMessage);
+					$intState = get_nagios_state($intState, $intStateSet);
 				}
 			}
 		} elsif ($hrefFilerInfo->{$strFilerEntry}{'object'} eq "temp") {
 			if ($hrefFilerInfo->{$strFilerEntry}{'count'} eq "true") {
 				my $intStateSet = 1;
-                                foreach my $strWarnThresh (@aryWarning) {
-                                        if ($strWarnThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
-                                                $intStateSet = 1;
-                                        }
-                                }
+				foreach my $strWarnThresh (@aryWarning) {
+					if ($strWarnThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
+						$intStateSet = 1;
+					}
+				}
 
-                                foreach my $strCritThresh (@aryCritical) {
-                                        if ($strCritThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
-                                                $intStateSet = 2;
-                                        }
-                                }
+				foreach my $strCritThresh (@aryCritical) {
+					if ($strCritThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
+						$intStateSet = 2;
+					}
+				}
 
 				if ($intStateSet > 0) {
 					my $strNewMessage = $strFilerEntry . " has breached the filer temperature warning threshold";
-                                	$strOutput = get_nagios_description($strOutput, $strNewMessage);
+					$strOutput = get_nagios_description($strOutput, $strNewMessage);
 					$intState = get_nagios_state($intState, $intStateSet);
 				}
 			}
@@ -613,31 +884,31 @@ sub calc_filer_hardware_health {
 			if (!($hrefFilerInfo->{$strFilerEntry}{'message'} eq "battery_ok" || $hrefFilerInfo->{$strFilerEntry}{'message'} eq "battery_fully_charged")) {
 				my $intStateSet = 1;
 				foreach my $strWarnThresh (@aryWarning) {
-                                        if ($strWarnThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
-                                                $intStateSet = 1;
-                                        }
-                                }
+					if ($strWarnThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
+						$intStateSet = 1;
+					}
+				}
 
-                                foreach my $strCritThresh (@aryCritical) {
-                                        if ($strCritThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
-                                                $intStateSet = 2;
-                                        }
-                                }
+				foreach my $strCritThresh (@aryCritical) {
+					if ($strCritThresh eq $hrefFilerInfo->{$strFilerEntry}{'object'}) {
+						$intStateSet = 2;
+					}
+				}
 
-                                if ($intStateSet > 0) {
-                                        my $strNewMessage = $strFilerEntry . " is currently in state " . $hrefFilerInfo->{$strFilerEntry}{'message'};
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $intState = get_nagios_state($intState, $intStateSet);
-                                }
+				if ($intStateSet > 0) {
+					my $strNewMessage = $strFilerEntry . " is currently in state " . $hrefFilerInfo->{$strFilerEntry}{'message'};
+					$strOutput = get_nagios_description($strOutput, $strNewMessage);
+					$intState = get_nagios_state($intState, $intStateSet);
+				}
 			}
 		}
 	}
 
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
-        }
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
 
-        return $intState, $strOutput;
+	return $intState, $strOutput;
 }
 
 ##############################################
@@ -648,42 +919,45 @@ sub get_snapmirror_lag {
 	# Get snapmirror monitoring objects
 	my ($nahStorage, $strVHost) = @_;
 	# Set up variables to handle the API queries for snapmirror retrieval.
-        my $nahSMIterator = NaElement->new("snapmirror-get-iter");
+	my $nahSMIterator = NaElement->new("snapmirror-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahSMInfo = NaElement->new("snapmirror-info");
-        my $strActiveTag = "";
-        my %hshSMHealth;
+	my $nahSMInfo = NaElement->new("snapmirror-info");
+	my $nahTag = NaElement->new("tag");
+	my $strActiveTag = "";
+	my %hshSMHealth;
 
 	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
-                $nahSMIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahSMInfo);
-                $nahSMInfo->child_add_string("destination-volume-node", $strVHost);
-        }
+		$nahSMIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahSMInfo);
+		$nahSMInfo->child_add_string("destination-volume-node", $strVHost);
+	}
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
-        while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahSMIterator->child_add_string("tag", $strActiveTag);
-                }
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	$nahSMIterator->child_add_string("max-records", 100);
+	$nahSMIterator->child_add($nahTag);
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahTag->set_content($strActiveTag);
+		}
 
-                $nahSMIterator->child_add_string("max-records", 100);
-				# Invoke the request.
-                my $nahResponse = $nahStorage->invoke_elem($nahSMIterator);
-                validate_ontapi_response($nahResponse, "Failed volume query: ");
+		# Invoke the request.
+		my $nahResponse = $nahStorage->invoke_elem($nahSMIterator);
+		validate_ontapi_response($nahResponse, "Failed volume query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
-		# Assign all the retrieved information to a hash 
+		# Stop if there are no more records.
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
+
+		# Assign all the retrieved information to a hash.
 		foreach my $nahSM ($nahResponse->child_get("attributes-list")->children_get()) {
 			# Without snapmirror control plane v2 insufficient information is available to perform monitoring.
-			if ($nahSM->child_get_string("relationship-control-plane") eq "v2") {
+			if (defined($nahSM->child_get_string("relationship-control-plane")) && $nahSM->child_get_string("relationship-control-plane") eq "v2") {
 				my $strSMName = $nahSM->child_get_string("destination-volume-node") . "://" . $nahSM->child_get_string("destination-location");
-                        	$hshSMHealth{$strSMName}{'source'} = $nahSM->child_get_string("source-location");
+				$hshSMHealth{$strSMName}{'source'} = $nahSM->child_get_string("source-location");
 				
 				# Values may not necessarily exist so assign them if they do.
 				if ($nahSM->child_get_string("is-healthy") eq "false") {
@@ -701,19 +975,19 @@ sub get_snapmirror_lag {
 }
 
 sub calc_snapmirror_health {
-		# Work out which values have crossed the snapmirror thresholds defined by the user.
-        my ($hrefSMInfo, $strWarning, $strCritical) = @_;
-        my ($hrefWarnThresholds, $hrefCritThresholds) = snapmirror_threshold_converter($strWarning, $strCritical);
-        my $intState = 0;
+	# Work out which values have crossed the snapmirror thresholds defined by the user.
+	my ($hrefSMInfo, $strWarning, $strCritical) = @_;
+	my ($hrefWarnThresholds, $hrefCritThresholds) = snapmirror_threshold_converter($strWarning, $strCritical);
+	my $intState = 0;
 	my $intObjectCount = 0;
-        my $strOutput;
+	my $strOutput;
 	
 	foreach my $strSM (keys %$hrefSMInfo) {
 		$intObjectCount = $intObjectCount + 1;
 		if (defined($hrefSMInfo->{$strSM}->{'health'})) {
 			my $strNewMessage = $hrefSMInfo->{$strSM}->{'source'} . " -> " . $strSM . " is unhealthy: " . $hrefSMInfo->{$strSM}->{'health'};
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $intState = get_nagios_state($intState, 1);
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 1);
 		}
 		
 		my $bProcess = 1;
@@ -722,7 +996,7 @@ sub calc_snapmirror_health {
 				my $strFriendlyTime = seconds_to_time($hrefSMInfo->{$strSM}->{'lag'});
 				my $strNewMessage = $hrefSMInfo->{$strSM}->{'source'} . " -> " . $strSM . " lag time has reached " . $strFriendlyTime;
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                $intState = get_nagios_state($intState, 2);
+				$intState = get_nagios_state($intState, 2);
 				$bProcess = 0;
 			}
 		}
@@ -731,16 +1005,16 @@ sub calc_snapmirror_health {
 			if ($hrefSMInfo->{$strSM}->{'lag'} > $hrefWarnThresholds->{'lag-time'}) {
 				my $strFriendlyTime = seconds_to_time($hrefSMInfo->{$strSM}->{'lag'});
 				my $strNewMessage = $hrefSMInfo->{$strSM}->{'source'} . " -> " . $strSM . " lag time has reached " . $strFriendlyTime;
-                                $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                $intState = get_nagios_state($intState, 1);
-                        }
+				$strOutput = get_nagios_description($strOutput, $strNewMessage);
+				$intState = get_nagios_state($intState, 1);
+			}
 		}
 	}
 
 	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
-        }
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
 
 	return $intState, $strOutput;
 }
@@ -748,79 +1022,81 @@ sub calc_snapmirror_health {
 sub snapmirror_threshold_converter {
 	# Split the user input into a hash that's easy to compare with the values retrieved from the filers.
 	my ($strWarning, $strCritical) = @_;
-        my (%hshWarnThresholds, %hshCritThresholds, @aryWarning, @aryCritical, @aryStringsTemp);
+	my (%hshWarnThresholds, %hshCritThresholds, @aryWarning, @aryCritical, @aryStringsTemp);
 
-        if (defined($strWarning)) {
-                @aryWarning = split(",", $strWarning);
-        }
+	if (defined($strWarning)) {
+		@aryWarning = split(",", $strWarning);
+	}
 
-        if (defined($strCritical)) {
-                @aryCritical = split(",", $strCritical);
-        }
+	if (defined($strCritical)) {
+		@aryCritical = split(",", $strCritical);
+	}
 
-        foreach my $strWarnThresh (@aryWarning) {
-                if ($strWarnThresh =~ m/^[0-9]*[smhd]$/) {
-                        $hshWarnThresholds{'lag-time'} = time_to_seconds($strWarnThresh);
-                } elsif ($strWarnThresh =~ m/^[a-zA-Z]*$/) {
-                        push(@aryStringsTemp, $strWarnThresh);
-                }
-        }
+	foreach my $strWarnThresh (@aryWarning) {
+		if ($strWarnThresh =~ m/^[0-9]*[smhd]$/) {
+			$hshWarnThresholds{'lag-time'} = time_to_seconds($strWarnThresh);
+		} elsif ($strWarnThresh =~ m/^[a-zA-Z]*$/) {
+			push(@aryStringsTemp, $strWarnThresh);
+		}
+	}
 
-        $hshWarnThresholds{'strings'} = [@aryStringsTemp];
-        undef(@aryStringsTemp);
+	$hshWarnThresholds{'strings'} = [@aryStringsTemp];
+	undef(@aryStringsTemp);
 
 	foreach my $strCritThresh (@aryCritical) {
-                if ($strCritThresh =~ m/^[0-9]*[smhd]$/) {
-                        $hshCritThresholds{'lag-time'} = time_to_seconds($strCritThresh);
-                } elsif ($strCritThresh =~ m/^[a-zA-Z]*$/) {
-                        push(@aryStringsTemp, $strCritThresh);
-                }
-        }
+		if ($strCritThresh =~ m/^[0-9]*[smhd]$/) {
+			$hshCritThresholds{'lag-time'} = time_to_seconds($strCritThresh);
+		} elsif ($strCritThresh =~ m/^[a-zA-Z]*$/) {
+			push(@aryStringsTemp, $strCritThresh);
+		}
+	}
 	
-        $hshCritThresholds{'strings'} = [@aryStringsTemp];
+	$hshCritThresholds{'strings'} = [@aryStringsTemp];
 	return \%hshWarnThresholds, \%hshCritThresholds;
 }
 
 ##############################################
 ## QUOTA SPACE
 ##############################################
+
 sub get_quota_space {
 	# Get quota monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
 	# Set up variables to handle the API queries for quota retrieval.
 	my $nahQuotaIterator = NaElement->new("quota-report-iter");
-        my $nahQuery = NaElement->new("query");
-        my $nahQuotaInfo = NaElement->new("quota");
-        my $strActiveTag = "";
-        my %hshQuotaUsage;
+	my $nahQuery = NaElement->new("query");
+	my $nahQuotaInfo = NaElement->new("quota");
+	my $strActiveTag = "";
+	my %hshQuotaUsage;
 
-		# Narrow search to only the requested node if configured by user with the -n option
-        if (defined($strVHost)) {
-                $nahQuotaIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahQuotaInfo);
-                $nahQuotaInfo->child_add_string("vserver", $strVHost);
-        }
+	# Narrow search to only the requested node if configured by user with the -n option
+	if (defined($strVHost)) {
+		$nahQuotaIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahQuotaInfo);
+		$nahQuotaInfo->child_add_string("vserver", $strVHost);
+	}
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
-        while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahQuotaIterator->child_add_string("tag", $strActiveTag);
-                }
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahQuotaIterator->child_add_string("tag", $strActiveTag);
+		}
 
-                $nahQuotaIterator->child_add_string("max-records", 200);
-				# Invoke the request.
-                my $nahResponse = $nahStorage->invoke_elem($nahQuotaIterator);
-                validate_ontapi_response($nahResponse, "Failed volume query: ");
+		$nahQuotaIterator->child_add_string("max-records", 200);
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		# Invoke the request.
+		my $nahResponse = $nahStorage->invoke_elem($nahQuotaIterator);
+		validate_ontapi_response($nahResponse, "Failed volume query: ");
 
-				# Stop if there are no more records.
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Assign all the retrieved information to a hash 
-                foreach my $nahQuota ($nahResponse->child_get("attributes-list")->children_get()) {
+		# Stop if there are no more records.
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
+
+		# Assign all the retrieved information to a hash.
+		foreach my $nahQuota ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strQuotaName = $nahQuota->child_get_string("vserver") . "/" . $nahQuota->child_get_string("volume");
 
 			# Alter name to include the tree path if the object has a tree path.
@@ -845,13 +1121,13 @@ sub calc_quota_health {
 	# Work out which values have crossed the quota thresholds defined on the filer.
 	my $hrefQuotaInfo = shift;
 	my $intState = 0;
-    my $intObjectCount = 0;
-    my $strOutput;
+	my $intObjectCount = 0;
+	my $strOutput;
 
 	# Iterate through each of the objects and test the values, then set the Nagios state information as necessary.
-    foreach my $strQuota (keys %$hrefQuotaInfo) {
-    	$intObjectCount = $intObjectCount + 1;
-	#	my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
+	foreach my $strQuota (keys %$hrefQuotaInfo) {
+		$intObjectCount = $intObjectCount + 1;
+		#my $intUsedToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-used'});
 		my $intUsedToBytes = $hrefQuotaInfo->{$strQuota}->{'space-used'}*1024;
 		my $strReadableUsed = space_to_human_readable($intUsedToBytes);
 
@@ -859,53 +1135,53 @@ sub calc_quota_health {
 			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-hard-limit'}) {
 				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-hard-limit'});
 				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-hard-limit'}*1024;
-                my $strReadableThresh = space_to_human_readable($intThreshToBytes);
+		my $strReadableThresh = space_to_human_readable($intThreshToBytes);
 				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                $intState = get_nagios_state($intState, 2);
+		$intState = get_nagios_state($intState, 2);
 			}
 		} elsif ($hrefQuotaInfo->{$strQuota}->{'space-threshold'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-threshold'}) {
 				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-threshold'});
 				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-threshold'}*1024;
-                my $strReadableThresh = space_to_human_readable($intThreshToBytes);
+		my $strReadableThresh = space_to_human_readable($intThreshToBytes);
 				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                $intState = get_nagios_state($intState, 2);
-                        }
+		$intState = get_nagios_state($intState, 2);
+			}
 		} elsif ($hrefQuotaInfo->{$strQuota}->{'space-soft-limit'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-soft-limit'}) {
 				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-soft-limit'});
 				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-soft-limit'}*1024;
-                my $strReadableThresh = space_to_human_readable($intThreshToBytes);
+		my $strReadableThresh = space_to_human_readable($intThreshToBytes);
 				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                $intState = get_nagios_state($intState, 1);
-                        }
+				$intState = get_nagios_state($intState, 1);
+			}
 		}
 
 		if ($hrefQuotaInfo->{$strQuota}->{'files-hard-limit'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'files-used'} >= $hrefQuotaInfo->{$strQuota}->{'files-hard-limit'}) {
 				my $strNewMessage = $strQuota . " - " . $hrefQuotaInfo->{$strQuota}->{'files-used'} . "/" . $hrefQuotaInfo->{$strQuota}->{'files-hard-limit'} . " FILES USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                $intState = get_nagios_state($intState, 2);
-                        }
+				$intState = get_nagios_state($intState, 2);
+			}
 		} elsif ($hrefQuotaInfo->{$strQuota}->{'files-soft-limit'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'files-used'} >= $hrefQuotaInfo->{$strQuota}->{'files-soft-limit'}) {
 				my $strNewMessage = $strQuota . " - " . $hrefQuotaInfo->{$strQuota}->{'files-used'} . "/" . $hrefQuotaInfo->{$strQuota}->{'files-soft-limit'} . " FILES USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                $intState = get_nagios_state($intState, 1);
-                        }
+				$intState = get_nagios_state($intState, 1);
+			}
 		}
 
 	}
 	
 	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
-        }
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
 
-        return $intState, $strOutput;
+	return $intState, $strOutput;
 }
 
 ##############################################
@@ -916,60 +1192,61 @@ sub get_aggregate_space {
 	# Get aggregate monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
 	# Set up variables to handle the API queries for aggregate retrieval.
-        my $nahAggIterator = NaElement->new("aggr-get-iter");
+	my $nahAggIterator = NaElement->new("aggr-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahAggInfo = NaElement->new("aggr-attributes");
-        my $nahAggIdInfo = NaElement->new("aggr-ownership-attributes");
-        my $strActiveTag = "";
-        my %hshAggUsage;
+	my $nahAggInfo = NaElement->new("aggr-attributes");
+	my $nahAggIdInfo = NaElement->new("aggr-ownership-attributes");
+	my $strActiveTag = "";
+	my %hshAggUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
-                $nahAggIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahAggInfo);
-                $nahAggInfo->child_add($nahAggIdInfo);
-                $nahAggIdInfo->child_add_string("home-name", $strVHost);
-        }
+		$nahAggIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahAggInfo);
+		$nahAggInfo->child_add($nahAggIdInfo);
+		$nahAggIdInfo->child_add_string("home-name", $strVHost);
+	}
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
-        while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                        $nahAggIterator->child_add_string("tag", $strActiveTag);
-                }
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahAggIterator->child_add_string("tag", $strActiveTag);
+		}
 
-                $nahAggIterator->child_add_string("max-records", 100);
-				# Invoke the request.
-                my $nahResponse = $nahStorage->invoke_elem($nahAggIterator);
-                validate_ontapi_response($nahResponse, "Failed volume query: ");
+		$nahAggIterator->child_add_string("max-records", 100);
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		# Invoke the request.
+		my $nahResponse = $nahStorage->invoke_elem($nahAggIterator);
+		validate_ontapi_response($nahResponse, "Failed volume query: ");
 
-				# Stop if there are no more records.
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Assign all the retrieved information to a hash 
-                foreach my $nahAgg ($nahResponse->child_get("attributes-list")->children_get()) {
-                        my $strAggName = $nahAgg->child_get_string("aggregate-name");
-                        my $strAggOwner = $nahAgg->child_get("aggr-ownership-attributes")->child_get_string("home-name");
-                        $strAggName = $strAggOwner . "/" . $strAggName;
+		# Stop if there are no more records.
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
-                        if ($nahAgg->child_get("aggr-raid-attributes")->child_get_string("state") ne "online") {
-                                $hshAggUsage{$strAggName}{'state'} = $nahAgg->child_get("aggr-raid-attributes")->child_get_string("state");
-                        } else {
-                                $hshAggUsage{$strAggName}{'state'} = $nahAgg->child_get("aggr-raid-attributes")->child_get_string("state");
-                                $hshAggUsage{$strAggName}{'space-total'} = $nahAgg->child_get("aggr-space-attributes")->child_get_string("size-total");
-                                $hshAggUsage{$strAggName}{'space-used'} = $nahAgg->child_get("aggr-space-attributes")->child_get_string("size-used");
-                                $hshAggUsage{$strAggName}{'inodes-total'} = $nahAgg->child_get("aggr-inode-attributes")->child_get_string("files-total");
-                                $hshAggUsage{$strAggName}{'inodes-used'} = $nahAgg->child_get("aggr-inode-attributes")->child_get_string("files-used");
+		# Assign all the retrieved information to a hash.
+		foreach my $nahAgg ($nahResponse->child_get("attributes-list")->children_get()) {
+			my $strAggName = $nahAgg->child_get_string("aggregate-name");
+			my $strAggOwner = $nahAgg->child_get("aggr-ownership-attributes")->child_get_string("home-name");
+			$strAggName = $strAggOwner . "/" . $strAggName;
+
+			if ($nahAgg->child_get("aggr-raid-attributes")->child_get_string("state") ne "online") {
+				$hshAggUsage{$strAggName}{'state'} = $nahAgg->child_get("aggr-raid-attributes")->child_get_string("state");
+			} else {
+				$hshAggUsage{$strAggName}{'state'} = $nahAgg->child_get("aggr-raid-attributes")->child_get_string("state");
+				$hshAggUsage{$strAggName}{'space-total'} = $nahAgg->child_get("aggr-space-attributes")->child_get_string("size-total");
+				$hshAggUsage{$strAggName}{'space-used'} = $nahAgg->child_get("aggr-space-attributes")->child_get_string("size-used");
+				$hshAggUsage{$strAggName}{'inodes-total'} = $nahAgg->child_get("aggr-inode-attributes")->child_get_string("files-total");
+				$hshAggUsage{$strAggName}{'inodes-used'} = $nahAgg->child_get("aggr-inode-attributes")->child_get_string("files-used");
 				$hshAggUsage{$strAggName}{'home-owner'} = $nahAgg->child_get("aggr-ownership-attributes")->child_get_string("home-name");
 				$hshAggUsage{$strAggName}{'current-owner'} = $nahAgg->child_get("aggr-ownership-attributes")->child_get_string("owner-name");
-                        }
-                }
-        }
+			}
+		}
+	}
 
-        return \%hshAggUsage;
+	return \%hshAggUsage;
 }
 
 ##############################################
@@ -980,67 +1257,72 @@ sub get_snap_space {
 	# Get snapshot monitoring objects 
 	my ($nahStorage, $strVHost) = @_;
 	# Set up variables to handle the API queries for snapshot retrieval.
-        my $nahVolIterator = NaElement->new("volume-get-iter");
+	my $nahVolIterator = NaElement->new("volume-get-iter");
 	my $nahQuery = NaElement->new("query");
-        my $nahVolInfo = NaElement->new("volume-attributes");
-        my $nahVolIdInfo = NaElement->new("volume-id-attributes");
-        my $nahTag = NaElement->new("tag");
-        my $strActiveTag = "";
-        my %hshVolUsage;
+	my $nahVolInfo = NaElement->new("volume-attributes");
+	my $nahVolIdInfo = NaElement->new("volume-id-attributes");
+	my $nahTag = NaElement->new("tag");
+	my $strActiveTag = "";
+	my %hshVolUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
-                $nahVolIterator->child_add($nahQuery);
-                $nahQuery->child_add($nahVolInfo);
-                $nahVolInfo->child_add($nahVolIdInfo);
-                $nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
-        }
+		$nahVolIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahVolInfo);
+		$nahVolInfo->child_add($nahVolIdInfo);
+		$nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
+	}
 
-		# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
-        $nahVolIterator->child_add_string("max-records", 100);
-        $nahVolIterator->child_add($nahTag);
-        while(defined($strActiveTag)) {
-                if ($strActiveTag ne "") {
-                    $nahTag->set_content($strActiveTag);
-                }
+	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
+	$nahVolIterator->child_add_string("max-records", 100);
+	$nahVolIterator->child_add($nahTag);
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+		    $nahTag->set_content($strActiveTag);
+		}
 
-				# Invoke the request.
-                my $nahResponse = $nahStorage->invoke_elem($nahVolIterator);
-                validate_ontapi_response($nahResponse, "Failed volume query: ");
+		# Invoke the request.
+		my $nahResponse = $nahStorage->invoke_elem($nahVolIterator);
+		validate_ontapi_response($nahResponse, "Failed volume query: ");
 
-                $strActiveTag = $nahResponse->child_get_string("next-tag");
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
 
-				# Stop if there are no more records.
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		# Stop if there are no more records.
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
-				# Assign all the retrieved information to a hash 
-                foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
+		# Assign all the retrieved information to a hash.
+		foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
-                        my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
-                        my $strVolOwner = $nahVol->child_get("volume-id-attributes")->child_get_string("owning-vserver-name");
-                        $strVolName = $strVolOwner . "/" . $strVolName;
+			my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
+			my $strVolOwner = $nahVol->child_get("volume-id-attributes")->child_get_string("owning-vserver-name");
+			$strVolName = $strVolOwner . "/" . $strVolName;
 
 						# Don't monitor a volume that is currently being moved as it will result in errors.
-                        if (defined($nahVol->child_get("volume-state-attributes")->child_get_string("is-moving")) &&
-                            $nahVol->child_get("volume-state-attributes")->child_get_string("is-moving") eq "true") {
-                                next;
-                        }
+			if (defined($nahVol->child_get("volume-state-attributes")->child_get_string("is-moving")) &&
+			    $nahVol->child_get("volume-state-attributes")->child_get_string("is-moving") eq "true") {
+				next;
+			}
 
-                        if ($nahVol->child_get("volume-state-attributes")->child_get_string("state") ne "online") {
-                                $hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
-                        } else {
-                                $hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
-                                $hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-available-for-snapshots");
-                                $hshVolUsage{$strVolName}{'space-used'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-used-by-snapshots");
-                                $hshVolUsage{$strVolName}{'inodes-total'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-total");
-                                $hshVolUsage{$strVolName}{'inodes-used'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-used");
-                        }
-                }
-        }
+			# Don't check snapshots of volumes with type TMP (7-Mode Transition Tool)
+			if ($nahVol->child_get("volume-id-attributes")->child_get_string("type") eq "tmp") {
+				next;
+			}
 
-        return \%hshVolUsage;
+			if ($nahVol->child_get("volume-state-attributes")->child_get_string("state") ne "online") {
+				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
+			} else {
+				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
+				$hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("snapshot-reserve-size");
+				$hshVolUsage{$strVolName}{'space-used'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-used-by-snapshots");
+				$hshVolUsage{$strVolName}{'inodes-total'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-total");
+				$hshVolUsage{$strVolName}{'inodes-used'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-used");
+			}
+		}
+	}
+
+	return \%hshVolUsage;
 }
 
 ##############################################
@@ -1055,7 +1337,7 @@ sub get_volume_space {
 	my $nahQuery = NaElement->new("query");
 	my $nahVolInfo = NaElement->new("volume-attributes");
 	my $nahVolIdInfo = NaElement->new("volume-id-attributes");
-    my $nahTag = NaElement->new("tag");
+	my $nahTag = NaElement->new("tag");
 	my $strActiveTag = "";
 	my %hshVolUsage;
 
@@ -1068,25 +1350,25 @@ sub get_volume_space {
 	}
 	
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
-    $nahVolIterator->child_add_string("max-records", 100);
-    $nahVolIterator->child_add($nahTag);
+	$nahVolIterator->child_add_string("max-records", 100);
+	$nahVolIterator->child_add($nahTag);
 	while(defined($strActiveTag)) {
-        if ($strActiveTag ne "") {
-            $nahTag->set_content($strActiveTag);
-        }
+	if ($strActiveTag ne "") {
+		$nahTag->set_content($strActiveTag);
+	}
 		
 		$nahVolIterator->child_add_string("max-records", 100);
 		# Invoke the request.
 		my $nahResponse = $nahStorage->invoke_elem($nahVolIterator);
-                validate_ontapi_response($nahResponse, "Failed volume query: ");
+		validate_ontapi_response($nahResponse, "Failed volume query: ");
 
 		$strActiveTag = $nahResponse->child_get_string("next-tag");
 		# Stop if there are no more records.
-                if ($nahResponse->child_get_string("num-records") == 0) {
-                        last;
-                }
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
 
-		# Assign all the retrieved information to a hash 
+		# Assign all the retrieved information to a hash.
 		foreach my $nahVol ($nahResponse->child_get("attributes-list")->children_get()) {
 
 			my $strVolName = $nahVol->child_get("volume-id-attributes")->child_get_string("name");
@@ -1100,14 +1382,19 @@ sub get_volume_space {
 				}
 			}
 
+			# Don't check volumes with type TMP (7-Mode Transition Tool)
+			if ($nahVol->child_get("volume-id-attributes")->child_get_string("type") eq "tmp") {
+				next;
+			}
+
 			if ($nahVol->child_get("volume-state-attributes")->child_get_string("state") ne "online") {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 			} else {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 				$hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-total");
 				$hshVolUsage{$strVolName}{'space-used'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-used");
-                        	$hshVolUsage{$strVolName}{'inodes-total'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-total");
-                        	$hshVolUsage{$strVolName}{'inodes-used'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-used");
+				$hshVolUsage{$strVolName}{'inodes-total'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-total");
+				$hshVolUsage{$strVolName}{'inodes-used'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-used");
 			}
 		}
 	}
@@ -1126,6 +1413,7 @@ sub calc_space_health {
 	my $intState = 0;
 	my $intObjectCount = 0;
 	my $strOutput;
+	my $perfOutput;
 	my $hrefObjectState;
 
 	foreach my $strObj (keys %$hrefSpaceInfo) {
@@ -1153,17 +1441,17 @@ sub calc_space_health {
 					next;
 				}
 				foreach my $strStateThresh (@{$hrefWarnThresholds->{'strings'}}) {
-                                        if ($hrefSpaceInfo->{$strObj}->{'state'} eq $strStateThresh) {
-                                                my $strNewMessage = $strObj . " is " . $strStateThresh;
-                                                $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                                $intState = get_nagios_state($intState, 1);
+					if ($hrefSpaceInfo->{$strObj}->{'state'} eq $strStateThresh) {
+						my $strNewMessage = $strObj . " is " . $strStateThresh;
+						$strOutput = get_nagios_description($strOutput, $strNewMessage);
+						$intState = get_nagios_state($intState, 1);
 						delete($hrefSpaceInfo->{$strObj});
-                                        }
-                                }
-                        } elsif ($hrefSpaceInfo->{$strObj}->{'state'} eq "offline") {
-                                delete($hrefSpaceInfo->{$strObj});
-                        }
-                }
+					}
+				}
+			} elsif ($hrefSpaceInfo->{$strObj}->{'state'} eq "offline") {
+				delete($hrefSpaceInfo->{$strObj});
+			}
+		}
 		
 		# Test to see if the monitored object is on it's home node and raise an alert if it is not.
 		if (defined($hrefSpaceInfo->{$strObj}->{'home-owner'}) && defined($hrefSpaceInfo->{$strObj}->{'current-owner'})) {
@@ -1171,136 +1459,169 @@ sub calc_space_health {
 				if ($hrefCritThresholds->{'owner'}) {
 					my $strNewMessage = $strObj . " not on home! Home: " . $hrefSpaceInfo->{$strObj}->{'home-owner'} . " Current: " . $hrefSpaceInfo->{$strObj}->{'current-owner'};
 					$strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $intState = get_nagios_state($intState, 2);
+					$intState = get_nagios_state($intState, 2);
 				} elsif ($hrefWarnThresholds->{'owner'}) {
 					my $strNewMessage = $strObj . " not on home! Home: " . $hrefSpaceInfo->{$strObj}->{'home-owner'} . " Current: " . $hrefSpaceInfo->{$strObj}->{'current-owner'};
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $intState = get_nagios_state($intState, 1);
+					$strOutput = get_nagios_description($strOutput, $strNewMessage);
+					$intState = get_nagios_state($intState, 1);
 				}
 			}
 		}
-        }
+	}
 
-		# Test to see if the monitored object has crossed a defined space threshhold.
-        ($intState, $strOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
-        ($intState, $strOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
+	# Test to see if the monitored object has crossed a defined space threshhold.
+	($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
+	($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
 
-		# If everything looks ok and no output has been defined then set the message to display OK.
-        if (!(defined($strOutput))) {
-                $strOutput = "OK - No problems found ($intObjectCount checked)";
-        }
+	
 
-        return $intState, $strOutput;
+	# If everything looks ok and no output has been defined then set the message to display OK.
+	if (!(defined($strOutput))) {
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
+
+	if ((defined($perfOutput))) {
+		$strOutput .= $perfOutput;
+	}
+
+ 
+
+	return $intState, $strOutput;
 }
 
 sub space_threshold_helper {
 	# Test the various monitored object values against the thresholds provided by the user.
 	my ($intState, $strOutput, $hrefVolInfo, $hrefThresholds, $intAlertLevel) = @_;
 
+	my $perfOutput = "";
+	my $perfOutputFinal = " | ";
+
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
 
-		# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
-		if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
-			# Prepare certain variables pre-check to reduce code duplication.
-		#	if (defined($hrefVolInfo->{$strVol}->{'space-total'})) {
-				my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
-            	$intUsedPercent = floor($intUsedPercent + 0.5);
-            	my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
-            	my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
-            	my $strNewMessage = $strVol . " - " . $strReadableUsed . "/" . $strReadableTotal . " (" . $intUsedPercent . "%) SPACE USED";
-			
-			
-			if (defined($hrefThresholds->{'space-percent'}) && defined($hrefThresholds->{'space-count'})) {
-				my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
-				my $intCountInPercent = ($intCountInBytes/$hrefVolInfo->{$strVol}->{'space-total'}) * 100;
-				$intCountInPercent = floor($intCountInPercent + 0.5);
-				my $intPercentInvert = 100 - $hrefThresholds->{'space-percent'};
+		# Test added by Didier Tollenaers 03/04/2015 updated by Xavier Vallve 28/02/2017
+		if ($hrefVolInfo->{$strVol}->{'state'} eq 'online')  {
+		
+			# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
+			if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
+				# Prepare certain variables pre-check to reduce code duplication.
+			#	if (defined($hrefVolInfo->{$strVol}->{'space-total'})) {
+					my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
+					$intUsedPercent = floor($intUsedPercent + 0.5);
+					my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
+					my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
+					my $strNewMessage = $strVol . " - " . $strReadableUsed . "/" . $strReadableTotal . " (" . $intUsedPercent . "%) SPACE USED";
+
+					if ($intAlertLevel == 1) {
+						$perfOutput .= "'" . $strVol . "_used'=" . $hrefVolInfo->{$strVol}->{'space-used'} . "B ";
+
+						my $spaceFree = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
+						$perfOutput .= "'" . $strVol . "_free'=" . $spaceFree . "B ";
+					}				
 				
-				if ($intCountInPercent < $intPercentInvert) {
+				if (defined($hrefThresholds->{'space-percent'}) && defined($hrefThresholds->{'space-count'})) {
+					my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
+					my $intCountInPercent = ($intCountInBytes/$hrefVolInfo->{$strVol}->{'space-total'}) * 100;
+					$intCountInPercent = floor($intCountInPercent + 0.5);
+					my $intPercentInvert = 100 - $hrefThresholds->{'space-percent'};
+					
+					if ($intCountInPercent < $intPercentInvert) {
+						my $intBytesRemaining = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
+						if ($intCountInBytes > $intBytesRemaining) {
+							$intState = get_nagios_state($intState, $intAlertLevel);
+							$strOutput = get_nagios_description($strOutput, $strNewMessage);
+							$bMarkedForRemoval = 1;
+						}
+					} 
+					else {
+						if ($intUsedPercent >= $hrefThresholds->{'space-percent'}) {
+							$intState = get_nagios_state($intState, $intAlertLevel);
+							$strOutput = get_nagios_description($strOutput, $strNewMessage);
+							$bMarkedForRemoval = 1;
+						}
+					}
+				} elsif (defined($hrefThresholds->{'space-percent'})) {
+					if ($intUsedPercent >= $hrefThresholds->{'space-percent'}) {
+										$intState = get_nagios_state($intState, $intAlertLevel);
+											$strOutput = get_nagios_description($strOutput, $strNewMessage);
+											$bMarkedForRemoval = 1;
+									}
+				} elsif (defined($hrefThresholds->{'space-count'})) { 
+					my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
 					my $intBytesRemaining = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
 					if ($intCountInBytes > $intBytesRemaining) {
-						$intState = get_nagios_state($intState, $intAlertLevel);
-						$strOutput = get_nagios_description($strOutput, $strNewMessage);
-						$bMarkedForRemoval = 1;
-					}
-				} 
-				else {
-					if ($intUsedPercent >= $hrefThresholds->{'space-percent'}) {
-						$intState = get_nagios_state($intState, $intAlertLevel);
-                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                        $bMarkedForRemoval = 1;
-					}
+										$intState = get_nagios_state($intState, $intAlertLevel);
+											$strOutput = get_nagios_description($strOutput, $strNewMessage);
+											$bMarkedForRemoval = 1;
+									}
 				}
-			} elsif (defined($hrefThresholds->{'space-percent'})) {
-				if ($intUsedPercent >= $hrefThresholds->{'space-percent'}) {
-                                	$intState = get_nagios_state($intState, $intAlertLevel);
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $bMarkedForRemoval = 1;
-                                }
-			} elsif (defined($hrefThresholds->{'space-count'})) { 
-				my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
-				my $intBytesRemaining = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
-				if ($intCountInBytes > $intBytesRemaining) {
-                                	$intState = get_nagios_state($intState, $intAlertLevel);
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $bMarkedForRemoval = 1;
-                                }
 			}
-		}
 
-		if (defined($hrefThresholds->{'inodes-percent'}) || defined($hrefThresholds->{'inodes-count'})) {	
-			my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'inodes-used'} / $hrefVolInfo->{$strVol}->{'inodes-total'}) * 100;
-                                $intUsedPercent = floor($intUsedPercent + 0.5);
-                                my $strNewMessage = $strVol . " - " . $hrefVolInfo->{$strVol}->{'inodes-used'} . "/" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " (" . $intUsedPercent . "%) INODES USED";
+			if (defined($hrefThresholds->{'inodes-percent'}) || defined($hrefThresholds->{'inodes-count'})) {	
+				my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'inodes-used'} / $hrefVolInfo->{$strVol}->{'inodes-total'}) * 100;
+				$intUsedPercent = floor($intUsedPercent + 0.5);
+				my $strNewMessage = $strVol . " - " . $hrefVolInfo->{$strVol}->{'inodes-used'} . "/" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " (" . $intUsedPercent . "%) INODES USED";
 
-			if (defined($hrefThresholds->{'inodes-percent'}) && defined($hrefThresholds->{'inodes-count'})) {
-				my $intPercentInInodes = $hrefVolInfo->{$strVol}->{'inodes-total'} * ($hrefThresholds->{'inodes-percent'}/100);
-				
-				if ($hrefThresholds->{'inodes-count'} < $intPercentInInodes) {
-					my $intInodesRemaining = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
-					if ($hrefThresholds->{'inodes-count'} > $intInodesRemaining) {
-						$intState = get_nagios_state($intState, $intAlertLevel);
-                                                $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                                $bMarkedForRemoval = 1;
+				if ($intAlertLevel == 1) {
+					$perfOutput .= "'" . $strVol . "_inodes_used'=" . $hrefVolInfo->{$strVol}->{'inodes-used'} . "B ";
+
+					my $inodesFree = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
+					$perfOutput .= "'" . $strVol . "_inodes_free'=" . $inodesFree;
+				}
+
+				if (defined($hrefThresholds->{'inodes-percent'}) && defined($hrefThresholds->{'inodes-count'})) {
+					my $intPercentInInodes = $hrefVolInfo->{$strVol}->{'inodes-total'} * ($hrefThresholds->{'inodes-percent'}/100);
+					
+					if ($hrefThresholds->{'inodes-count'} < $intPercentInInodes) {
+						my $intInodesRemaining = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
+						if ($hrefThresholds->{'inodes-count'} > $intInodesRemaining) {
+							$intState = get_nagios_state($intState, $intAlertLevel);
+													$strOutput = get_nagios_description($strOutput, $strNewMessage);
+													$bMarkedForRemoval = 1;
+						}
+					} else {
+						if ($intUsedPercent >= $hrefThresholds->{'inodes-percent'}) {
+							$intState = get_nagios_state($intState, $intAlertLevel);
+													$strOutput = get_nagios_description($strOutput, $strNewMessage);
+													$bMarkedForRemoval = 1;
+						}
 					}
-				} else {
+				} elsif (defined($hrefThresholds->{'inodes-percent'})) {
 					if ($intUsedPercent >= $hrefThresholds->{'inodes-percent'}) {
-						$intState = get_nagios_state($intState, $intAlertLevel);
-                                                $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                                $bMarkedForRemoval = 1;
-					}
+										$intState = get_nagios_state($intState, $intAlertLevel);
+											$strOutput = get_nagios_description($strOutput, $strNewMessage);
+											$bMarkedForRemoval = 1;
+									}
+				} elsif (defined($hrefThresholds->{'inodes-count'})) {
+					my $intInodesRemaining = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
+									
+					if ($hrefThresholds->{'inodes-count'} > $intInodesRemaining) {
+										$intState = get_nagios_state($intState, $intAlertLevel);
+											$strOutput = get_nagios_description($strOutput, $strNewMessage);
+											$bMarkedForRemoval = 1;
+									}
 				}
-			} elsif (defined($hrefThresholds->{'inodes-percent'})) {
-				if ($intUsedPercent >= $hrefThresholds->{'inodes-percent'}) {
-                                	$intState = get_nagios_state($intState, $intAlertLevel);
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $bMarkedForRemoval = 1;
-                                }
-			} elsif (defined($hrefThresholds->{'inodes-count'})) {
-				my $intInodesRemaining = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
-                                
-				if ($hrefThresholds->{'inodes-count'} > $intInodesRemaining) {
-                                	$intState = get_nagios_state($intState, $intAlertLevel);
-                                        $strOutput = get_nagios_description($strOutput, $strNewMessage);
-                                        $bMarkedForRemoval = 1;
-                                }
 			}
-		}
-		
-		# Remove problems from list so that it's not altered by further monitoring (I.e. warnings overwriting critical problems)
-		if ($bMarkedForRemoval) {
-			delete($hrefVolInfo->{$strVol});
+			
+			# Remove problems from list so that it's not altered by further monitoring (I.e. warnings overwriting critical problems)
+			if ($bMarkedForRemoval) {
+				delete($hrefVolInfo->{$strVol});
+			}
 		}
 	}
 
-	return $intState, $strOutput, $hrefVolInfo;
+	if ($intAlertLevel == 1) {
+		#print "perfOutput: " . $perfOutput . "\n";
+		$perfOutputFinal .= $perfOutput;
+	}
+
+	return $intState, $strOutput, $perfOutputFinal, $hrefVolInfo;
 }
 
 sub space_threshold_converter {
 	# Determine what thresholds have been provided by the user for space monitoring.
-        my ($strWarning, $strCritical) = @_;
-        my (%hshWarnThresholds, %hshCritThresholds, @aryWarning, @aryCritical, @aryStringsTemp);
+	my ($strWarning, $strCritical) = @_;
+	my (%hshWarnThresholds, %hshCritThresholds, @aryWarning, @aryCritical, @aryStringsTemp);
 
 	if (defined($strWarning)) {
 		@aryWarning = split(",", $strWarning);
@@ -1314,91 +1635,91 @@ sub space_threshold_converter {
 	$hshCritThresholds{'owner'} = 0;
 
 	# Use regex to match the various possible values for space monitoring and assign the values to the relevant hash element.
-        foreach my $strWarnThresh (@aryWarning) {
-                if ($strWarnThresh =~ m/^[0-9]*\%$/) {
-                        $hshWarnThresholds{'space-percent'} = $strWarnThresh;
+	foreach my $strWarnThresh (@aryWarning) {
+		if ($strWarnThresh =~ m/^[0-9]*\%$/) {
+			$hshWarnThresholds{'space-percent'} = $strWarnThresh;
 			$hshWarnThresholds{'space-percent'} =~ s/%//;
-                } elsif ($strWarnThresh =~ m/^([0-9]*)([KMGT]?B)/) {
-                        $hshWarnThresholds{'space-count'} = $strWarnThresh;		
+		} elsif ($strWarnThresh =~ m/^([0-9]*)([KMGT]?B)/) {
+			$hshWarnThresholds{'space-count'} = $strWarnThresh;		
 		} elsif ($strWarnThresh =~ m/^[0-9]*\%i$/) {
-                        $hshWarnThresholds{'inodes-percent'} = $strWarnThresh;
+			$hshWarnThresholds{'inodes-percent'} = $strWarnThresh;
 			$hshWarnThresholds{'inodes-percent'} =~ s/\%i//;
 		} elsif ($strWarnThresh =~ m/^[0-9]*$/) {
-                        $hshWarnThresholds{'inodes-count'} = $strWarnThresh;
+			$hshWarnThresholds{'inodes-count'} = $strWarnThresh;
 		} elsif ($strWarnThresh =~ m/^owner$/) {
 			$hshWarnThresholds{'owner'} = 1;
 		} elsif ($strWarnThresh =~ m/^[a-zA-Z]*$/) {
 			push(@aryStringsTemp, $strWarnThresh);
-                }
-        }
+		}
+	}
 
 	# Push an array of invalid states for the monitored object to be in to the threshold hash if any have been defined.
 	$hshWarnThresholds{'strings'} = [@aryStringsTemp];
 	undef(@aryStringsTemp);
 
 	# Use regex to match the various possible values for space monitoring and assign the values to the relevant hash element.
-        foreach my $strCritThresh (@aryCritical) {
-                if ($strCritThresh =~ m/^[0-9]*\%$/) {
-                        $hshCritThresholds{'space-percent'} = $strCritThresh;
+	foreach my $strCritThresh (@aryCritical) {
+		if ($strCritThresh =~ m/^[0-9]*\%$/) {
+			$hshCritThresholds{'space-percent'} = $strCritThresh;
 			$hshCritThresholds{'space-percent'} =~ s/%//;
-                } elsif ($strCritThresh =~ m/^([0-9]*)([KMGT]?B)/) {
-                        $hshCritThresholds{'space-count'} = $strCritThresh;
+		} elsif ($strCritThresh =~ m/^([0-9]*)([KMGT]?B)/) {
+			$hshCritThresholds{'space-count'} = $strCritThresh;
 		} elsif ($strCritThresh =~ m/^[0-9]*\%i$/) {
-                        $hshCritThresholds{'inodes-percent'} = $strCritThresh;
+			$hshCritThresholds{'inodes-percent'} = $strCritThresh;
 			$hshCritThresholds{'inodes-percent'} =~ s/\%i//;
 		} elsif ($strCritThresh =~ m/^[0-9]*$/) {
-                        $hshCritThresholds{'inodes-count'} = $strCritThresh;
+			$hshCritThresholds{'inodes-count'} = $strCritThresh;
 		} elsif ($strCritThresh =~ m/^owner$/) {
 			$hshCritThresholds{'owner'} = 1;
 		} elsif ($strCritThresh =~ m/^[a-zA-Z]*$/) {
 			push(@aryStringsTemp, $strCritThresh);
-                }
-        }
+		}
+	}
 
 	# Push an array of invalid states for the monitored object to be in to the threshold hash if any have been defined.
 	$hshCritThresholds{'strings'} = [@aryStringsTemp];
-        return \%hshWarnThresholds, \%hshCritThresholds;
+	return \%hshWarnThresholds, \%hshCritThresholds;
 }
 
 sub space_to_bytes {
-		# Convert human readable magnitude to bytes.
-        my $strInput = shift;
-        $strInput =~ m/([0-9]*)([KMGT]?B)/;
-        my $intValue = $1;
-        my $strMagnitude = $2;
+	# Convert human readable magnitude to bytes.
+	my $strInput = shift;
+	$strInput =~ m/([0-9]*)([KMGT]?B)/;
+	my $intValue = $1;
+	my $strMagnitude = $2;
 
-        if ($strMagnitude eq "KB") {
-                $intValue = $intValue * 1024;
-        } elsif ($strMagnitude eq "MB") {
-                $intValue = $intValue * (1024 ** 2);
-        } elsif ($strMagnitude eq "GB") {
-                $intValue = $intValue * (1024 ** 3);
-        } elsif ($strMagnitude eq "TB") {
-                $intValue = $intValue * (1024 ** 4);
-        } else {
-                print "No magnitude (B, KB, MB, GB, TB) defined, unable to finish!\n";
-                exit 3;
-        }
+	if ($strMagnitude eq "KB") {
+		$intValue = $intValue * 1024;
+	} elsif ($strMagnitude eq "MB") {
+		$intValue = $intValue * (1024 ** 2);
+	} elsif ($strMagnitude eq "GB") {
+		$intValue = $intValue * (1024 ** 3);
+	} elsif ($strMagnitude eq "TB") {
+		$intValue = $intValue * (1024 ** 4);
+	} else {
+		print "No magnitude (B, KB, MB, GB, TB) defined, unable to finish!\n";
+		exit 3;
+	}
 
-        return $intValue;
+	return $intValue;
 }
 
 sub space_to_human_readable {
 	# Convert bytes to human readable magnitude
 	my $intValue = shift;
 
-        my @aryStrings = ("B","KB","MB","GB","TB");
-        my $intCount = 0;
+	my @aryStrings = ("B","KB","MB","GB","TB");
+	my $intCount = 0;
 
-        while (($intValue > 1024) && ($intCount < 4)) {
-                $intValue = $intValue / 1024;
-                $intCount = $intCount + 1;
-        }
+	while (($intValue > 1024) && ($intCount < 4)) {
+		$intValue = $intValue / 1024;
+		$intCount = $intCount + 1;
+	}
 		
-		# Round the output so that it's a whole value only.
-		my $strRoundedNumber = sprintf("%0.2f", $intValue) . $aryStrings[$intCount];
+	# Round the output so that it's a whole value only.
+	my $strRoundedNumber = sprintf("%0.2f", $intValue) . $aryStrings[$intCount];
 
-        return $strRoundedNumber;
+	return $strRoundedNumber;
 }
 
 ##############################################
@@ -1406,30 +1727,34 @@ sub space_to_human_readable {
 ##############################################
 
 sub help {
-		# It helps :) I hope.
-        my $strVersion = "v0.6 b190514";
-        print "\ncheck_netapp_ontapi version: $strVersion\n";
-        print "By John Murphy <john.murphy\@roshamboot.org>, GNU GPL License\n";
-        print "\nUsage: ./check_netapp_ontapi.pl -H <hostname> -u <username> -p <password> -o <option> [ -w <warning_thresh> -c <critical_thresh> -m <include|exclude,pattern1,pattern2,etc> ]\n\n";
-        print <<EOL;
+	# It helps :) I hope.
+	my $strVersion = "v2.07.170621";
+	print "\ncheck_netapp_ontapi version: $strVersion\n";
+	print "By John Murphy <john.murphy\@roshamboot.org>, Willem D'Haese <willem.dhaese\@gmail.com>, GNU GPL License\n";
+	print "\nUsage: ./check_netapp_ontapi.pl -H <hostname> -u <username> -p <password> -o <option> [ -w <warning_thresh> -c <critical_thresh> -m <include|exclude,pattern1,pattern2,etc> ]\n\n";
+	print <<EOL;
 --hostname, -H
-        Hostname or address of the cluster administrative interface.
+	Hostname or address of the cluster administrative interface.
 --node, -n
 	Name of a vhost or cluster-node to restrict this query to.
 --user, -u
-        Username of a Netapp Ontapi enabled user.
+	Username of a Netapp Ontapi enabled user.
 --password, -p
-        Password for the netapp Ontapi enabled user.
+	Password for the netapp Ontapi enabled user.
 --option, -o
-        The name of the option you want to check. See the option and threshold list at the bottom of this help text.
+	The name of the option you want to check. See the option and threshold list at the bottom of this help text.
+--suboption, -s
+	If available for the option, allow to specify the list of the checks to perform.
 --warning, -w
-        A custom warning threshold value. See the option and threshold list at the bottom of this help text.
+	A custom warning threshold value. See the option and threshold list at the bottom of this help text.
 --critical, -c
-        A custom warning threshold value. See the option and threshold list at the bottom of this help text.
+	A custom warning threshold value. See the option and threshold list at the bottom of this help text.
 --modifier, -m
-        This modifier is used to set an inclusive or exclusive filter on what you want to monitor.
+	This modifier is used to set an inclusive or exclusive filter on what you want to monitor.
+--report, -r
+	The output format. Can be "short", "long" (default), or "html"
 --help, -h
-        Display this help text.
+	Display this help text.
 
 ===OPTION LIST===
 volume_health
@@ -1438,13 +1763,13 @@ volume_health
 	node: The node option restricts this check by vserver name.
 
 aggregate_health
-        desc: Check the space and inode health of a cluster aggregate. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large aggregate monitoring.
-        thresh: Space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), "offline" keyword, "is-home" keyword.
+	desc: Check the space and inode health of a cluster aggregate. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large aggregate monitoring.
+	thresh: Space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), "offline" keyword, "is-home" keyword.
 	node: The node option restricts this check by cluster-node name.
 
 snapshot_health
-        desc: Check the space and inode health of a vServer snapshot. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large snapshot monitoring.
-        thresh: Space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), "offline" keyword.
+	desc: Check the space and inode health of a vServer snapshot. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large snapshot monitoring.
+	thresh: Space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), "offline" keyword.
 	node: The node option restricts this check by vserver name.
 
 quota_health
@@ -1453,44 +1778,50 @@ quota_health
 	node: The node option restricts this check by vserver name.
 
 snapmirror_health
-        desc: Check the lag time and health flag of the snapmirror relationships.
-        thresh: Snapmirror lag time (valid intervals are s, m, h, d).
+	desc: Check the lag time and health flag of the snapmirror relationships.
+	thresh: Snapmirror lag time (valid intervals are s, m, h, d).
 	node: The node options restricts this check by snapmirror destination cluster-node name.
 
 filer_hardware_health
-        desc: Check the environment hardware health of the filers (fan, psu, temperature, battery).
-        thresh: Component name (fan, psu, temperature, battery). There is no default alert level they MUST be defined.
+	desc: Check the environment hardware health of the filers (fan, psu, temperature, battery).
+	thresh: Component name (fan, psu, temperature, battery). There is no default alert level they MUST be defined.
 	node: The node option restricts this check by cluster-node name.
 
 port_health
-        desc: Checks the state of a physical network port.
-        thresh: N/A not customizable.
-        node: The node option restricts this check by cluster-node name.
+	desc: Checks the state of a physical network port.
+	thresh: N/A not customizable.
+	node: The node option restricts this check by cluster-node name.
 
 interface_health
-        desc: Check that a LIF is in the correctly configured state and that it is on its home node and port.
-        thresh: N/A not customizable.
+	desc: Check that a LIF is in the correctly configured state and that it is on its home node and port.
+	thresh: N/A not customizable.
 	node: The node option restricts this check by vserver name.
+	suboption: status, home-node, home-port
 
 netapp_alarms
-        desc: Check for Netapp console alarms.
-        thresh: N/A not customizable.
+	desc: Check for Netapp console alarms.
+	thresh: N/A not customizable.
 	node: The node option restricts this check by cluster-node name.
 
 cluster_health
-        desc: Check the cluster disks for failure or other potentially undesirable states. 
-        thresh: N/A not customizable.
+	desc: Check the cluster disks for failure or other potentially undesirable states. 
+	thresh: N/A not customizable.
 	node: The node option restricts this check by cluster-node name.
 
 disk_health
-        desc: Check the health of the disks in the cluster.
-        thresh: Not customizable yet.
+	desc: Check the health of the disks in the cluster.
+	thresh: Not customizable yet.
+	node: The node option restricts this check by cluster-node name.
+
+disk_spare
+	desc: Check the number of spare disks
+	thresh: Warning / critical required spare disks. Default thresholds are 2 / 1.
 	node: The node option restricts this check by cluster-node name.
 
 * For keyword thresholds, if you want to ignore alerts for that particular keyword you set it at the same threshold that the alert defaults to.
 
 EOL
-        exit 3;
+	exit 3;
 }
 
 sub time_to_seconds {
@@ -1499,8 +1830,8 @@ sub time_to_seconds {
 	
 	# Use regex back references to seperate the value from the magnitude.
 	$strInput =~ m/([0-9]*)([smhd])/;
-        my $intValue = $1;
-        my $strMagnitude = $2;
+	my $intValue = $1;
+	my $strMagnitude = $2;
 
 	if ($strMagnitude eq "s") {
 		# Do nothing
@@ -1521,20 +1852,20 @@ sub time_to_seconds {
 sub seconds_to_time {
 	# Convert seconds to human readable time frame D H M S
 	my $intSecondsIn = shift;
-        my $intDays = int($intSecondsIn / 86400);
-        $intSecondsIn = $intSecondsIn - ($intDays * 86400);
-        my $intHours = int($intSecondsIn / 3600);
-        $intSecondsIn = $intSecondsIn - ($intHours * 3600);
-        my $intMinutes = int($intSecondsIn / 60);
-        my $intSeconds = $intSecondsIn % 60;
+	my $intDays = int($intSecondsIn / 86400);
+	$intSecondsIn = $intSecondsIn - ($intDays * 86400);
+	my $intHours = int($intSecondsIn / 3600);
+	$intSecondsIn = $intSecondsIn - ($intHours * 3600);
+	my $intMinutes = int($intSecondsIn / 60);
+	my $intSeconds = $intSecondsIn % 60;
 
-        my $strDays = $intDays < 1 ? "" : $intDays . "d ";
-        my $strHours = $intHours < 1 ? "" : $intHours . "h ";
-        my $strMinutes = $intMinutes < 1 ? "" : $intMinutes . "m ";
-        my $strSeconds = $intSeconds . "s";
-        my $strTime = $strDays . $strHours . $strMinutes . $strSeconds;
+	my $strDays = $intDays < 1 ? "" : $intDays . "d ";
+	my $strHours = $intHours < 1 ? "" : $intHours . "h ";
+	my $strMinutes = $intMinutes < 1 ? "" : $intMinutes . "m ";
+	my $strSeconds = $intSeconds . "s";
+	my $strTime = $strDays . $strHours . $strMinutes . $strSeconds;
 
-        return $strTime;
+	return $strTime;
 }
 
 sub get_nagios_description {
@@ -1544,6 +1875,18 @@ sub get_nagios_description {
 		$strOutput = $strNewMessage;
 	} else { 
 		$strOutput .= ", " . $strNewMessage;
+	}
+
+	return $strOutput;
+}
+
+sub get_nagios_multiline {
+	# Helper function to concatenate multiline output messages
+	my ($strOutput, $strNewMessage) = @_;
+	if (!(defined($strOutput))) {
+		$strOutput = $strNewMessage;
+	} else {
+		$strOutput .= "<br>" . $strNewMessage;
 	}
 
 	return $strOutput;
@@ -1560,20 +1903,20 @@ sub get_nagios_state {
 }
 
 sub validate_ontapi_response {
-        my ($nahResponse, $strMessage) = @_;
+	my ($nahResponse, $strMessage) = @_;
 		
 		# Validate the response from the API to ensure that it doesn't contain any errors and if it does fail gracefully.
-        if (ref($nahResponse) eq "NaElement" && $nahResponse->results_errno != 0) {
-                my $strResponse = $nahResponse->results_reason();
-                print $strMessage . $strResponse . "\n";
-                exit 3;
-        } elsif ($nahResponse->results_status() eq "failed") {
-                my $strResponse = $nahResponse->results_reason();
-                print $strResponse . "\n";
-                exit 3;
-        } else {
-                return;
-        }
+	if (ref($nahResponse) eq "NaElement" && $nahResponse->results_errno != 0) {
+		my $strResponse = $nahResponse->results_reason();
+		print $strMessage . $strResponse . "\n";
+		exit 3;
+	} elsif ($nahResponse->results_status() eq "failed") {
+		my $strResponse = $nahResponse->results_reason();
+		print $strResponse . "\n";
+		exit 3;
+	} else {
+		return;
+	}
 }
 
 sub filter_object {
@@ -1597,16 +1940,16 @@ sub filter_object {
 		foreach my $strObject (keys %$hrefObjectsToFilter) {
 			my $bRemove = 1;
 
-                        foreach my $strFilter (@aryModifier) {
-                                if ($strObject =~ m/$strFilter/) {
+			foreach my $strFilter (@aryModifier) {
+				if ($strObject =~ m/$strFilter/) {
 					$bRemove = 0;
-                                }
-                        }
+				}
+			}
 
 			if ($bRemove) {
 				delete($hrefObjectsToFilter->{$strObject});
 			}
-                }
+		}
 	} else {
 		print "Unable to determine modifier type, should be either include or exclude... skipping filtering step.\n";
 		exit 3;
@@ -1622,23 +1965,27 @@ sub filter_object {
 ##############################################
 
 # Declare and configure option selections
-my ($strHost, $strVHost, $strUser, $strPassword, $strOption, $strWarning, $strCritical, $strModifier);
+my ($strHost, $strVHost, $strUser, $strPassword, $strOption, $strSuboption, $strWarning, $strCritical, $strModifier, $strReport);
+$strSuboption = undef;
+$strReport = "long";
 
-GetOptions("H=s" => \$strHost,                                  "hostname=s" => \$strHost,
-	   "n=s" => \$strVHost,					"node=s" => \$strVHost,
-           "u=s" => \$strUser,                                  "user=s" => \$strUser,
-           "p=s" => \$strPassword,                              "password=s" => \$strPassword,
-	   "o=s" => \$strOption,                                "option=s" => \$strOption,
-	   "w=s" => \$strWarning,            			"warning=s" => \$strWarning,
-           "c=s" => \$strCritical,            			"critical=s" => \$strCritical,
-	   "m=s" => \$strModifier, 				"modifier=s" => \$strModifier);
+GetOptions(
+	"H=s" => \$strHost,		"hostname=s" => \$strHost,
+	"n=s" => \$strVHost,		"node=s" => \$strVHost,
+	"u=s" => \$strUser,		"user=s" => \$strUser,
+	"p=s" => \$strPassword,		"password=s" => \$strPassword,
+	"o=s" => \$strOption,		"option=s" => \$strOption,
+	"s=s" => \$strSuboption,	"suboption=s" => \$strSuboption,
+	"w=s" => \$strWarning,		"warning=s" => \$strWarning,
+	"c=s" => \$strCritical,		"critical=s" => \$strCritical,
+	"m=s" => \$strModifier,		"modifier=s" => \$strModifier,
+	"r=s" => \$strReport,		"report=s" => \$strReport);
 
 # Print help if a required field is not entered or if help is requested.
 if (!($strHost || $strUser || $strPassword || $strOption)) {
 	print "A required option is not set!\n";
-        help();
+	help();
 }
-
 # Convert to lowercase to prevented unexpected things happening while trying to match the option.
 $strOption = lc($strOption);
 
@@ -1652,8 +1999,8 @@ validate_ontapi_response($nahResponse, "Failed test query: ");
 
 # Test that the filer is running in clustered mode instead of 7-Mode, exit if it is not.
 if (!($nahResponse->child_get_string("is-clustered"))) {
-        print "This plugin only works for Cluster-Mode your filers are running in 7-Mode.\n";
-        exit 3;
+	print "This plugin only works for Cluster-Mode your filers are running in 7-Mode.\n";
+	exit 3;
 }
 
 # Declare output variables.
@@ -1674,6 +2021,14 @@ if ($strOption eq "volume_health") {
 	}
 
 	# Calculate the resulting health of the retrieved objects based on the metrics provided by the user (or in some cases the pre-defined metrics in the script).
+	if (!(defined($strWarning))) {
+		$strWarning="80%";
+	}
+
+	if (!(defined($strCritical))) {
+		$strCritical="95%";
+	}
+
 	($intState, $strOutput) = calc_space_health($hrefVolInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "aggregate_health") {
 	# * COMPLETE % TESTED
@@ -1681,38 +2036,59 @@ if ($strOption eq "volume_health") {
 	my $hrefAggInfo = get_aggregate_space($nahStorage, $strVHost);
 
 	if (defined($strModifier)) {
-                $hrefAggInfo = filter_object($hrefAggInfo, $strModifier);
-        }
+		$hrefAggInfo = filter_object($hrefAggInfo, $strModifier);
+	}
 
+	if (!(defined($strWarning))) {
+		$strWarning="80%";
+	}
+
+	if (!(defined($strCritical))) {
+		$strCritical="95%";
+	}
 	($intState, $strOutput) = calc_space_health($hrefAggInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "snapshot_health") {
 	# * COMPLETE % TESTED
 	# Space used, Inode used, offline
 	my $hrefSnapInfo = get_snap_space($nahStorage, $strVHost);
 
-        if (defined($strModifier)) {
-                $hrefSnapInfo = filter_object($hrefSnapInfo, $strModifier);
-        }
+	if (defined($strModifier)) {
+		$hrefSnapInfo = filter_object($hrefSnapInfo, $strModifier);
+	}
 
-        ($intState, $strOutput) = calc_space_health($hrefSnapInfo, $strWarning, $strCritical);
+	if (!(defined($strWarning))) {
+		$strWarning="80%";
+	}
+
+	if (!(defined($strCritical))) {
+		$strCritical="95%";
+	}
+	($intState, $strOutput) = calc_space_health($hrefSnapInfo, $strWarning, $strCritical);
 }  elsif ($strOption eq "quota_health") {
-        # * COMPLETE
-        # quota used, files used
-        my $hrefQuotaInfo = get_quota_space($nahStorage, $strVHost);
+	# * COMPLETE
+	# quota used, files used
+	my $hrefQuotaInfo = get_quota_space($nahStorage, $strVHost);
 
-        if (defined($strModifier)) {
-                $hrefQuotaInfo = filter_object($hrefQuotaInfo, $strModifier);
-        }
+	if (defined($strModifier)) {
+		$hrefQuotaInfo = filter_object($hrefQuotaInfo, $strModifier);
+	}
 
-        ($intState, $strOutput) = calc_quota_health($hrefQuotaInfo, $strWarning, $strCritical);
+	if (!(defined($strWarning))) {
+		$strWarning="80%";
+	}
+
+	if (!(defined($strCritical))) {
+		$strCritical="95%";
+	}
+	($intState, $strOutput) = calc_quota_health($hrefQuotaInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "snapmirror_health") {
 	# * COMPLETE % TESTED
 	# Snapmirror lag time, health
 	my $hrefSMInfo = get_snapmirror_lag($nahStorage, $strVHost);
 	
 	if (defined($strModifier)) {
-                $hrefSMInfo = filter_object($hrefSMInfo, $strModifier);
-        }
+		$hrefSMInfo = filter_object($hrefSMInfo, $strModifier);
+	}
 
 	($intState, $strOutput) = calc_snapmirror_health($hrefSMInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "filer_hardware_health") {
@@ -1722,65 +2098,79 @@ if ($strOption eq "volume_health") {
 	my $hrefFilerHWInfo = get_filer_hardware($nahStorage, $strVHost);
 	
 	if (defined($strModifier)) {
-                $hrefFilerHWInfo = filter_object($hrefFilerHWInfo, $strModifier);
-        }
+		$hrefFilerHWInfo = filter_object($hrefFilerHWInfo, $strModifier);
+	}
 
 	($intState, $strOutput) = calc_filer_hardware_health($hrefFilerHWInfo, $strWarning, $strCritical);
+
 } elsif ($strOption eq "interface_health") {
 	# * COMPLETE
 	# LIF status, LIF is on home node, LIF on home port
 
 	my $hrefInterfaceInfo = get_interface_health($nahStorage, $strVHost);
 
-        if (defined($strModifier)) {
-                $hrefInterfaceInfo = filter_object($hrefInterfaceInfo, $strModifier);
-        }
+	if (defined($strModifier)) {
+		$hrefInterfaceInfo = filter_object($hrefInterfaceInfo, $strModifier);
+	}
 
-        ($intState, $strOutput) = calc_interface_health($hrefInterfaceInfo, $strWarning, $strCritical);
+	($intState, $strOutput) = calc_interface_health($hrefInterfaceInfo, $strWarning, $strCritical, $strSuboption, $strReport);
+
 } elsif ($strOption eq "port_health") {
-        # * COMPLETE
-        # Port status
+	# * COMPLETE
+	# Port status
 
-        my $hrefPortInfo = get_port_health($nahStorage, $strVHost);
+	my $hrefPortInfo = get_port_health($nahStorage, $strVHost);
 
-        if (defined($strModifier)) {
-                $hrefPortInfo = filter_object($hrefPortInfo, $strModifier);
-        }
+	if (defined($strModifier)) {
+		$hrefPortInfo = filter_object($hrefPortInfo, $strModifier);
+	}
 
-        ($intState, $strOutput) = calc_interface_health($hrefPortInfo, $strWarning, $strCritical);
+	($intState, $strOutput) = calc_interface_health($hrefPortInfo, $strWarning, $strCritical);
+		
 } elsif ($strOption eq "netapp_alarms") {
 	# * COMPLETE
 	# Diagnostic and dashboard alarms
 	
 	my $hrefAlarmInfo = get_netapp_alarms($nahStorage, $strVHost);
 
-        if (defined($strModifier)) {
-                $hrefAlarmInfo = filter_object($hrefAlarmInfo, $strModifier);
-        }
+	if (defined($strModifier)) {
+		$hrefAlarmInfo = filter_object($hrefAlarmInfo, $strModifier);
+	}
 
-        ($intState, $strOutput) = calc_netapp_alarm_health($hrefAlarmInfo, $strWarning, $strCritical);
+	($intState, $strOutput) = calc_netapp_alarm_health($hrefAlarmInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "cluster_health") {
 	# * COMPLETE 
 	# Cluster health
 
 	my $hrefClusterInfo = get_cluster_health($nahStorage, $strVHost);
 
-        if (defined($strModifier)) {
-                $hrefClusterInfo = filter_object($hrefClusterInfo, $strModifier);
-        }
+	if (defined($strModifier)) {
+		$hrefClusterInfo = filter_object($hrefClusterInfo, $strModifier);
+	}
 
-        ($intState, $strOutput) = calc_cluster_health($hrefClusterInfo, $strWarning, $strCritical);
+	($intState, $strOutput) = calc_cluster_health($hrefClusterInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "disk_health") {
 	# * COMPLETE
 	# Disk health -wc ????
 
 	my $hrefDiskInfo = get_disk_info($nahStorage, $strVHost);
 
-        if (defined($strModifier)) {
-                $hrefDiskInfo = filter_object($hrefDiskInfo, $strModifier);
-        }
+	if (defined($strModifier)) {
+		$hrefDiskInfo = filter_object($hrefDiskInfo, $strModifier);
+	}
 
-        ($intState, $strOutput) = calc_disk_health($hrefDiskInfo, $strWarning, $strCritical);
+	($intState, $strOutput) = calc_disk_health($hrefDiskInfo);
+} elsif ($strOption eq "disk_spare") {
+	$strWarning  //= 2;
+	$strCritical //= 1;
+
+	my $hrefSpareInfo = get_spare_info($nahStorage, $strVHost, $strWarning, $strCritical);
+
+	if (defined($strModifier)) {
+		$hrefSpareInfo = filter_object($hrefSpareInfo, $strModifier);
+	}
+
+	($intState, $strOutput) = calc_spare_health($hrefSpareInfo, $strVHost, $strWarning, $strCritical);
 }
 
 ## FUTURE STUFF----
