@@ -267,7 +267,7 @@ sub calc_spare_health {
 		my ($spareCount, $unassignedCount, $unknownCount, $notZeroedCount) = (0, 0, 0, 0);
 		my $strNewMessage;
 
-		foreach my $strSpare (keys $hrefSpareInfo->{$node}) {
+		foreach my $strSpare (keys %{$hrefSpareInfo->{$node}}) {
 			$intObjectCount++;
 	
 			my $zeroedStatus = $hrefSpareInfo->{$node}->{$strSpare}->{'zeroed'};
