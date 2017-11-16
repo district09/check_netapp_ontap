@@ -1,59 +1,15 @@
 #!/usr/bin/perl
 
 # Script name:      check_netapp_ontap.pl
-<<<<<<< HEAD
-# Version:          v2.5.10
+# Version:	        v3.01.171611
 # Original author:  Murphy John
 # Current author:   D'Haese Willem
-=======
-# Version:	        v2.07.170621
-# Original author:  Murphy John
-# Current author:   D'Haese Willem
-# Contributors:     Waipeng, Ditol, Charton Yannick
->>>>>>> dev
+# Contributors:     Waipeng, Ditol, Charton Yannick, Tony Goetheyn
 # Purpose:          Checks NetApp ontapi clusters for various problems, like volume, aggregate, snapshot, 
 #                   quota, snapmirror, filer hardware, port, interface, cluster and disk health, but also NetApp alarms
 # On Github:        https://github.com/willemdh/check_netapp_ontap
-# On OutsideIT:     http://outsideit.net/check-netapp-ontap
-# Recent History:
-<<<<<<< HEAD
-#	05/06/14 => Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
-#	06/06/14 => Updated script header and documentation, further testing with thresholds 
-#	10/06/14 => Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode for a syncing mirror, were causing errors
-#	11/06/14 => Merged John's 0.6 script with my fork after accepting the transferred project
-#	10/05/15 => Cleanup script documentation and merged pull request from Waipeng
-=======
-#     Release   |     Date      |    Authors    |    Description
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
-#  v2.07.170621 |    21/06/17   | Y. Charton    | * indentations in the script now tab everywhere 
-#               |               |               | * new option --report/-r, allowing short(todo) / long(normal, current+multiline 
-#               |               |               |   for interface_health check) / html (current+html table for interface_health check). 
-#               |               |               |   Generated HTML table is also compatible with icingaweb2 (icingaweb2 classes used 
-#               |               |               |   so okay with icingaweb2 HTMLPurifier)
-#               |               |               | * new option --suboption/-s, allowing to specify what to check via the option. 
-#               |               |               |   Default is to check everything. Done for interface_health check, where you can 
-#               |               |               |   specify status, home-node, home-port. i.e.: -s "home-node,home-port" won't perform 
-#               |               |               |   the check of the status.
-#               |               |               | * add icinga2 command definition of the plugin
-#               |               |               | * fix default strCritical value not well set
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
-#  v2.06.160831 |    31/08/16   | W. D'Haese    | Add option to check spare disks
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
-#  v2.06.151101 |    01/11/15   | Ditol         | Added Ditol's code to exclude offline volumes
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
-#               |    10/05/15   | Waipeng       | Cleanup script documentation and merged pull request from Waipeng
-#               |               | W. D'Haese    |
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
-#               |    11/06/14   | Ditol         | Merged John's 0.6 script with my fork after accepting the transferred project
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
-#               |    10/06/14   | W. D'Haese    | Added if(defined..) to sub get_volume_space, becasue volumes in transferring mode 
-#               |               |               | for a syncing mirror, were causing errors
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
-#               |    06/06/14   | W. D'Haese    | Updated script header and documentation, further testing with thresholds 
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
-#               |    05/06/14   | W. D'Haese    | Set max records to 200 and removed space_to_bytes sub from $intUsedToBytes (no magnitude)
-# --------------+---------------+---------------+------------------------------------------------------------------------------------
->>>>>>> dev
+# On OutsideIT:     https://outsideit.net/monitoring-netapp-ontap/
+# 
 # Copyright:
 #   This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
 #   by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed 
@@ -61,7 +17,6 @@
 #   PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public 
 #   License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use lib ("/usr/lib64/perl5/NetApp_SDK");
 use warnings;
 use strict;
 use NaServer;
@@ -1993,7 +1948,7 @@ $strOption = lc($strOption);
 my $nahStorage = NaServer->new($strHost, 1, 15);
 $nahStorage->set_style("LOGIN");
 $nahStorage->set_admin_user($strUser, $strPassword);
-$nahStorage->set_transport_type("HTTP");
+$nahStorage->set_transport_type("HTTPS");
 my $nahResponse = $nahStorage->invoke("system-get-version");
 validate_ontapi_response($nahResponse, "Failed test query: ");
 
