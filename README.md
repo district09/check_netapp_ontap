@@ -7,11 +7,11 @@ snapshot, quota, snapmirror, firler hardware, port, interface cluster and disk h
 
 ### Status
 
-Poduction ready. Please visit http://outsideit.net/check-netapp-ontap for more information.
+Poduction ready.
 
 ### How To
 
-Please visit http://outsideit.net/check-netapp-ontap for more information on how to use this plugin.
+Please visit https://outsideit.net/monitoring-netapp-ontap/ for more information on how to use this plugin.
 
 ### Help
 
@@ -19,7 +19,7 @@ In case you find a bug or have a feature request, please make an issue on GitHub
 
 ### On Nagios Exchange
 
-http://exchange.nagios.org/directory/Plugins/Hardware/Storage-Systems/SAN-and-NAS/NetApp/Check-Netapp-Ontap/details
+https://exchange.nagios.org/directory/Plugins/Hardware/Storage-Systems/SAN-and-NAS/NetApp/Check-Netapp-Ontap/details
 
 ### Copyright
 
