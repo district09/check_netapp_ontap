@@ -670,6 +670,70 @@ sub calc_cluster_health {
 }
 
 ##############################################
+## VSCAN HEALTH
+##############################################
+
+sub get_vscan_info {
+	my ($nahVscan, $strVHost) = @_;
+	my $nahVscanIterator = NaElement->new("vscan-status-get-iter");
+	my $nahQuery = NaElement->new("query");
+	my $nahVscanInfo = NaElement->new("vscan-status-info");
+	my $strActiveTag = "";
+	my %hshVscanInfo;
+
+	if (defined($strVHost)) {
+		$nahVscanIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahVscanInfo);
+		$nahVscanInfo->child_add_string("vserver", $strVHost);
+	}
+
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahVscanIterator->child_add_string("tag", $strActiveTag);
+		}
+
+		$nahVscanIterator->child_add_string("max-records", 100);
+		my $nahResponse = $nahVscan->invoke_elem($nahVscanIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
+
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
+
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
+
+		foreach my $nahNode ($nahResponse->child_get("attributes-list")->children_get()) {
+			my $strName = $nahNode->child_get_string("vserver");
+			$hshVscanInfo{$strName}{'is-vscan-enabled'} = $nahNode->child_get_string("is-vscan-enabled");
+		}
+	}
+
+	return \%hshVscanInfo;
+}
+
+sub calc_vscan_health {
+	my $hrefVscanInfo = shift;
+	my $intState = 0;
+	my $intObjectCount = 0;
+	my $strOutput;
+
+	foreach my $strNode (keys %$hrefVscanInfo) {
+		$intObjectCount = $intObjectCount + 1;
+		if ($hrefVscanInfo->{$strNode}->{'is-vscan-enabled'} eq "false") {
+			my $strNewMessage = "vscan is disabled on $strNode";
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 2);
+		}
+	}
+
+	if (!(defined($strOutput))) {
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
+
+	return $intState, $strOutput;
+}
+
+##############################################
 ## NETAPP ALARMS
 ##############################################
 
@@ -1811,6 +1875,11 @@ port_health
 	thresh: N/A not customizable.
 	node: The node option restricts this check by cluster-node name.
 
+vscan_health
+	desc: Check if vscan is disabled
+	thresh: N/A not customizable.
+	node: The node option restricts this check by vserver name.
+
 interface_health
 	desc: Check that a LIF is in the correctly configured state and that it is on its home node and port.
 	thresh: N/A not customizable.
@@ -2162,6 +2231,17 @@ if ($strOption eq "volume_health") {
 	}
 
 	($intState, $strOutput) = calc_netapp_alarm_health($hrefAlarmInfo, $strWarning, $strCritical);
+} elsif ($strOption eq "vscan_health") {
+	# * COMPLETE
+	# Vscan status
+
+	my $hrefVscanInfo = get_vscan_info($nahStorage, $strVHost);
+
+	if (defined($strModifier)) {
+		$hrefVscanInfo = filter_object($hrefVscanInfo, $strModifier);
+	}
+
+	($intState, $strOutput) = calc_vscan_health($hrefVscanInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "cluster_health") {
 	# * COMPLETE
 	# Cluster health
