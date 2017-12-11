@@ -531,6 +531,70 @@ sub draw_html_table_interface_health {
 }
 
 ##############################################
+## CLUSTER NODE HEALTH
+##############################################
+
+sub get_cluster_node_health {
+	my ($nahStorage, $strVHost) = @_;
+	my $nahClusterNodeIterator = NaElement->new("cluster-node-get-iter");
+	my $nahQuery = NaElement->new("query");
+	my $nahClusterNodeInfo = NaElement->new("cluster-node-info");
+	my $strActiveTag = "";
+	my %hshClusterNodeInfo;
+
+	if (defined($strVHost)) {
+		$nahClusterNodeIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahClusterNodeInfo);
+		$nahClusterNodeInfo->child_add_string("originating-node", $strVHost);
+	}
+
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahClusterNodeIterator->child_add_string("tag", $strActiveTag);
+		}
+
+		$nahClusterNodeIterator->child_add_string("max-records", 100);
+		my $nahResponse = $nahStorage->invoke_elem($nahClusterNodeIterator);
+		validate_ontapi_response($nahResponse, "Failed node health query: ");
+
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
+
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
+
+		foreach my $nahNode ($nahResponse->child_get("attributes-list")->children_get()) {
+			my $strName = $nahNode->child_get_string("node-name");
+			$hshClusterNodeInfo{$strName}{'clusternode-healthy'} = $nahNode->child_get_string("is-node-healthy");
+		}
+	}
+
+	return \%hshClusterNodeInfo;
+}
+
+sub calc_cluster_node_health {
+	my $hrefClusterNodeInfo = shift;
+	my $intState = 0;
+	my $intObjectCount = 0;
+	my $strOutput;
+
+	foreach my $strNode (keys %$hrefClusterNodeInfo) {
+		$intObjectCount = $intObjectCount + 1;
+		if ($hrefClusterNodeInfo->{$strNode}->{'clusternode-healthy'} eq "false") {
+			my $strNewMessage = $strNode . " clusternode is unhealthy";
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 2);
+		}
+	}
+
+	if (!(defined($strOutput))) {
+		$strOutput = "OK - No problem found ($intObjectCount checked)";
+	}
+
+	return $intState, $strOutput;
+}
+
+##############################################
 ## CLUSTER HEALTH
 ##############################################
 
@@ -1763,6 +1827,11 @@ cluster_health
 	thresh: N/A not customizable.
 	node: The node option restricts this check by cluster-node name.
 
+clusternnode_health
+	desc: Check the cluster-nodes for unhealthy conditions
+	thresh: N/A not customizable.
+	node: The node option restricts this check by cluster-node name.
+
 disk_health
 	desc: Check the health of the disks in the cluster.
 	thresh: Not customizable yet.
@@ -2104,6 +2173,17 @@ if ($strOption eq "volume_health") {
 	}
 
 	($intState, $strOutput) = calc_cluster_health($hrefClusterInfo, $strWarning, $strCritical);
+} elsif ($strOption eq "clusternode_health") {
+	# * COMPLETE
+	# Cluster Node health
+
+	my $hrefClusterNodeInfo = get_cluster_node_health($nahStorage, $strVHost);
+
+	if (defined($strModifier)) {
+		$hrefClusterNodeInfo = filter_object($hrefClusterNodeInfo, $strModifier);
+	}
+
+	($intState, $strOutput) = calc_cluster_node_health($hrefClusterNodeInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "disk_health") {
 	# * COMPLETE
 	# Disk health -wc ????
