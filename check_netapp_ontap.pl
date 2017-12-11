@@ -1683,7 +1683,7 @@ sub space_to_human_readable {
 
 sub help {
 	# It helps :) I hope.
-	my $strVersion = "v2.07.170621";
+	my $strVersion = "v3.01.171611";
 	print "\ncheck_netapp_ontapi version: $strVersion\n";
 	print "By John Murphy <john.murphy\@roshamboot.org>, Willem D'Haese <willem.dhaese\@gmail.com>, GNU GPL License\n";
 	print "\nUsage: ./check_netapp_ontapi.pl -H <hostname> -u <username> -p <password> -o <option> [ -w <warning_thresh> -c <critical_thresh> -m <include|exclude,pattern1,pattern2,etc> ]\n\n";
