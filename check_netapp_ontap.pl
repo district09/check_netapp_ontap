@@ -387,7 +387,12 @@ sub get_interface_health {
 		foreach my $nahInt ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strName = $nahInt->child_get_string("home-node") . "/" . $nahInt->child_get_string("vserver") . $nahInt->child_get_string("interface-name");
 			$hshInterfaceInfo{$strName}{'admin-status'} = $nahInt->child_get_string("administrative-status");
-			$hshInterfaceInfo{$strName}{'link-status'} = $nahInt->child_get_string("operational-status");
+			# operational-status seems not always be set
+			if (defined $nahInt->child_get_string("operational-status")) {
+				$hshInterfaceInfo{$strName}{'link-status'} = $nahInt->child_get_string("operational-status");
+			} else {
+				$hshInterfaceInfo{$strName}{'link-status'} = 'unknown';
+			}
 			$hshInterfaceInfo{$strName}{'home-node'} = $nahInt->child_get_string("home-node");
 			$hshInterfaceInfo{$strName}{'current-node'} = $nahInt->child_get_string("current-node");
 			$hshInterfaceInfo{$strName}{'home-port'} = $nahInt->child_get_string("home-port");
@@ -767,6 +772,12 @@ sub get_netapp_alarms {
 		}
 
 		foreach my $nahAlarm ($nahResponse->child_get("attributes-list")->children_get()) {
+			# ignore alarms of type "aggregate_used" because of fixed percentages
+			next if ($nahAlarm->child_get_string("dashboard-metric-type") eq "aggregate_used" );
+
+			# ignore cifs/op_latency due to a netapp calculation bug
+			next if ($nahAlarm->child_get_string("object-name")."/".$nahAlarm->child_get_string("dashboard-metric-type") eq "cifs/op_latency");
+
 			my $strName = $nahAlarm->child_get_string("node") . "/" . $nahAlarm->child_get_string("object-name") . "/" . $nahAlarm->child_get_string("dashboard-metric-type");
 			$hshAlarms{$strName}{'value'} = $nahAlarm->child_get_string("last-value");
 			$hshAlarms{$strName}{'state'} = $nahAlarm->child_get_string("state");
@@ -864,19 +875,31 @@ sub get_filer_hardware {
 
 		foreach my $nahFilerObj ($nahResponse->child_get("attributes-list")->children_get()) {
 			my $strNodeName = $nahFilerObj->child_get_string("node");
-			$hshFilerHardware{$strNodeName . "/fan"}{'object'} = "fan";
-			$hshFilerHardware{$strNodeName . "/fan"}{'count'} = $nahFilerObj->child_get_string("env-failed-fan-count");
-			$hshFilerHardware{$strNodeName . "/fan"}{'message'} = $nahFilerObj->child_get_string("env-failed-fan-message");
+			# sometimes no enviroment info is present in server response
+			if (defined $nahFilerObj->child_get_string("env-failed-fan-count")) {
+				$hshFilerHardware{$strNodeName . "/fan"}{'object'} = "fan";
+				$hshFilerHardware{$strNodeName . "/fan"}{'count'} = $nahFilerObj->child_get_string("env-failed-fan-count");
+				$hshFilerHardware{$strNodeName . "/fan"}{'message'} = $nahFilerObj->child_get_string("env-failed-fan-message");
+			}
 
-			$hshFilerHardware{$strNodeName . "/psu"}{'object'} = "psu";
-			$hshFilerHardware{$strNodeName . "/psu"}{'count'} = $nahFilerObj->child_get_string("env-failed-power-supply-count");
-			$hshFilerHardware{$strNodeName . "/psu"}{'message'} = $nahFilerObj->child_get_string("env-failed-power-supply-message");
+			# sometimes no enviroment info is present in server response
+			if (defined $nahFilerObj->child_get_string("env-failed-power-supply-count")) {
+				$hshFilerHardware{$strNodeName . "/psu"}{'object'} = "psu";
+				$hshFilerHardware{$strNodeName . "/psu"}{'count'} = $nahFilerObj->child_get_string("env-failed-power-supply-count");
+				$hshFilerHardware{$strNodeName . "/psu"}{'message'} = $nahFilerObj->child_get_string("env-failed-power-supply-message");
+			}
 
-			$hshFilerHardware{$strNodeName . "/temp"}{'object'} = "temp";
-			$hshFilerHardware{$strNodeName . "/temp"}{'count'} = $nahFilerObj->child_get_string("env-over-temperature");
+			# sometimes no enviroment info is present in server response
+			if (defined $nahFilerObj->child_get_string("env-over-temperature")) {
+				$hshFilerHardware{$strNodeName . "/temp"}{'object'} = "temp";
+				$hshFilerHardware{$strNodeName . "/temp"}{'count'} = $nahFilerObj->child_get_string("env-over-temperature");
+			}
 
-			$hshFilerHardware{$strNodeName . "/battery"}{'object'} = "battery";
-			$hshFilerHardware{$strNodeName . "/battery"}{'message'} = $nahFilerObj->child_get_string("nvram-battery-status");
+			# sometimes no enviroment info is present in server response
+			if (defined $nahFilerObj->child_get_string("nvram-battery-status")) {
+				$hshFilerHardware{$strNodeName . "/battery"}{'object'} = "battery";
+				$hshFilerHardware{$strNodeName . "/battery"}{'message'} = $nahFilerObj->child_get_string("nvram-battery-status");
+			}
 		}
 	}
 
