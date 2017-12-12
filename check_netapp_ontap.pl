@@ -1611,19 +1611,15 @@ sub space_threshold_helper {
 			# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
 			if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
 				# Prepare certain variables pre-check to reduce code duplication.
-			#	if (defined($hrefVolInfo->{$strVol}->{'space-total'})) {
-					my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
-					$intUsedPercent = floor($intUsedPercent + 0.5);
-					my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
-					my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
-					my $strNewMessage = $strVol . " - " . $strReadableUsed . "/" . $strReadableTotal . " (" . $intUsedPercent . "%) SPACE USED";
+				my $intUsedPercent = ($hrfVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
+				$intUsedPercent = floor($intUsedPercent + 0.5);
+				my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
+				my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
+				my $strNewMessage = $strVol . " - " . $strReadableUsed . "/" . $strReadableTotal . " (" . $intUsedPercent . "%) SPACE USED";
 
-					if ($intAlertLevel == 1) {
-						$perfOutput .= "'" . $strVol . "_used'=" . $hrefVolInfo->{$strVol}->{'space-used'} . "B ";
-
-						my $spaceFree = $hrefVolInfo->{$strVol}->{'space-total'} - $hrefVolInfo->{$strVol}->{'space-used'};
-						$perfOutput .= "'" . $strVol . "_free'=" . $spaceFree . "B ";
-					}
+				if ($intAlertLevel == 1) {
+					$perfOutput .= "'" . $strVol . "_usage'=" . $hrefVolInfo->{$strVol}->{'space-used'} . "B;;;0;" . $hrefVolInfo->{$strVol}->{'space-total'} . " ";
+				}
 
 				if (defined($hrefThresholds->{'space-percent'}) && defined($hrefThresholds->{'space-count'})) {
 					my $intCountInBytes = space_to_bytes($hrefThresholds->{'space-count'});
@@ -1669,10 +1665,7 @@ sub space_threshold_helper {
 				my $strNewMessage = $strVol . " - " . $hrefVolInfo->{$strVol}->{'inodes-used'} . "/" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " (" . $intUsedPercent . "%) INODES USED";
 
 				if ($intAlertLevel == 1) {
-					$perfOutput .= "'" . $strVol . "_inodes_used'=" . $hrefVolInfo->{$strVol}->{'inodes-used'} . "B ";
-
-					my $inodesFree = $hrefVolInfo->{$strVol}->{'inodes-total'} - $hrefVolInfo->{$strVol}->{'inodes-used'};
-					$perfOutput .= "'" . $strVol . "_inodes_free'=" . $inodesFree;
+					$perfOutput .= "'" . $strVol . "_inodes'=" . $hrefVolInfo->{$strVol}->{'inodes-used'} . "B;;;0;" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " ";
 				}
 
 				if (defined($hrefThresholds->{'inodes-percent'}) && defined($hrefThresholds->{'inodes-count'})) {
