@@ -2150,6 +2150,17 @@ $nahStorage->set_transport_type("HTTPS");
 my $nahResponse = $nahStorage->invoke("system-get-version");
 validate_ontapi_response($nahResponse, "Failed test query: ");
 
+# Get ontapi version
+my $ontapiGeneration = $nahResponse->child_get("version-tuple")->child_get("system-version-tuple")->child_get_string("generation");
+my $ontapiMajor = $nahResponse->child_get("version-tuple")->child_get("system-version-tuple")->child_get_string("major");
+my $ontapiMinor = $nahResponse->child_get("version-tuple")->child_get("system-version-tuple")->child_get_string("minor");
+my $intOntapiVersion = int($ontapiGeneration . $ontapiMajor . $ontapiMinor);
+my $strOntapiVersion= $ontapiGeneration . '.' . $ontapiMajor . '.' . $ontapiMinor;
+
+if ($debug) {
+	print "Ontapi version: $strOntapiVersion\n";
+}
+
 # Test that the filer is running in clustered mode instead of 7-Mode, exit if it is not.
 if (!($nahResponse->child_get_string("is-clustered"))) {
 	print "This plugin only works for Cluster-Mode your filers are running in 7-Mode.\n";
