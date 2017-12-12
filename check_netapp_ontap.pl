@@ -466,15 +466,17 @@ sub calc_interface_health {
 	}
 
 	if (!(defined($strOutput))) {
-		$strOutput = "OK - No problem found ($intObjectCount checked)|";
+		$strOutput = "OK - No problem found ($intObjectCount checked) ";
 	} else {
-		if ($strReport eq "short" || $strReport eq "long") {
-			$strOutput .= "|\n$strMultiline";
-		} elsif ($strReport eq "html") {
-			my $strHTML = draw_html_table_interface_health($hrefInterfaceInfo, $strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort);
-			$strOutput .= "|\n$strHTML";
+		if(defined($strReport)) {
+			if ($strReport eq "short" || $strReport eq "long") {
+				$strOutput .= "\n$strMultiline";
+			} elsif ($strReport eq "html") {
+				my $strHTML = draw_html_table_interface_health($hrefInterfaceInfo, $strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort);
+				$strOutput .= "\n$strHTML";
+			}
 		} else {
-			$strOutput .= "|\n"
+			$strOutput .= "\n"
 		}
 	}
 
