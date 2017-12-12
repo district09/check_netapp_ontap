@@ -23,7 +23,13 @@ use NaServer;
 use NaElement;
 use Getopt::Long;
 use POSIX;
-#use Data::Dumper;
+
+my $verbose = undef;
+my $debug = undef;
+my $trace = undef;
+if ($verbose || $debug || $trace) {
+	use Data::Dumper;
+}
 
 ##############################################
 ## DISK HEALTH
@@ -1212,6 +1218,7 @@ sub get_quota_space {
 				$strQuotaName = $strQuotaName . "/" . $nahQuota->child_get_string("tree");
 			}
 
+		$hshQuotaUsage{$strQuotaName}{'sub'} = "get_quota_space";
 			$hshQuotaUsage{$strQuotaName}{'space-hard-limit'} = $nahQuota->child_get_string("disk-limit");
 			$hshQuotaUsage{$strQuotaName}{'space-threshold'} = $nahQuota->child_get_string("threshold");
 			$hshQuotaUsage{$strQuotaName}{'space-soft-limit'} = $nahQuota->child_get_string("soft-disk-limit");
@@ -1340,11 +1347,18 @@ sub get_aggregate_space {
 			my $strAggOwner = $nahAgg->child_get("aggr-ownership-attributes")->child_get_string("home-name");
 			$strAggName = $strAggOwner . "/" . $strAggName;
 
+			$hshAggUsage{$strAggName}{'sub'} = "get_aggregate_space";
 			if ($nahAgg->child_get("aggr-raid-attributes")->child_get_string("state") ne "online") {
 				$hshAggUsage{$strAggName}{'state'} = $nahAgg->child_get("aggr-raid-attributes")->child_get_string("state");
 			} else {
 				$hshAggUsage{$strAggName}{'state'} = $nahAgg->child_get("aggr-raid-attributes")->child_get_string("state");
 				$hshAggUsage{$strAggName}{'space-total'} = $nahAgg->child_get("aggr-space-attributes")->child_get_string("size-total");
+				if ($debug) {
+					if ( $hshAggUsage{$strAggName}{'space-total'} == 0 || $hshAggUsage{$strAggName}{'space-total'} eq '0' ) {
+						print "Aggregate $strAggName reports size-total of 0\n";
+						print Dumper($nahAgg);
+					}
+				}
 				$hshAggUsage{$strAggName}{'space-used'} = $nahAgg->child_get("aggr-space-attributes")->child_get_string("size-used");
 				$hshAggUsage{$strAggName}{'inodes-total'} = $nahAgg->child_get("aggr-inode-attributes")->child_get_string("files-total");
 				$hshAggUsage{$strAggName}{'inodes-used'} = $nahAgg->child_get("aggr-inode-attributes")->child_get_string("files-used");
@@ -1418,11 +1432,18 @@ sub get_snap_space {
 				next;
 			}
 
+			$hshVolUsage{$strVolName}{'sub'} = "get_snap_space";
 			if ($nahVol->child_get("volume-state-attributes")->child_get_string("state") ne "online") {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 			} else {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 				$hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("snapshot-reserve-size");
+				if ($debug) {
+					if ( $hshVolUsage{$strVolName}{'space-total'} == 0 || $hshVolUsage{$strVolName}{'space-total'} eq '0' ) {
+						print "Snapshot $strVolName reports size-total of 0\n";
+						print Dumper($nahVol);
+					}
+				}
 				$hshVolUsage{$strVolName}{'space-used'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-used-by-snapshots");
 				$hshVolUsage{$strVolName}{'inodes-total'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-total");
 				$hshVolUsage{$strVolName}{'inodes-used'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-used");
@@ -1495,11 +1516,18 @@ sub get_volume_space {
 				next;
 			}
 
+			$hshVolUsage{$strVolName}{'sub'} = "get_volume_space";
 			if ($nahVol->child_get("volume-state-attributes")->child_get_string("state") ne "online") {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 			} else {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 				$hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-total");
+				if ($debug) {
+					if ( $hshVolUsage{$strVolName}{'space-total'} == 0 || $hshVolUsage{$strVolName}{'space-total'} eq '0' ) {
+						print "Volume $strVolName reports size-total of 0\n";
+						print Dumper($nahVol);
+					}
+				}
 				$hshVolUsage{$strVolName}{'space-used'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-used");
 				$hshVolUsage{$strVolName}{'inodes-total'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-total");
 				$hshVolUsage{$strVolName}{'inodes-used'} = $nahVol->child_get("volume-inode-attributes")->child_get_string("files-used");
@@ -1858,6 +1886,8 @@ sub help {
 	This modifier is used to set an inclusive or exclusive filter on what you want to monitor.
 --report, -r
 	The output format. Can be "short", "long" (default), or "html"
+--verbose, --debug, --trace
+	Debug output options
 --help, -h
 	Display this help text.
 
@@ -2020,7 +2050,11 @@ sub get_nagios_state {
 sub validate_ontapi_response {
 	my ($nahResponse, $strMessage) = @_;
 
-		# Validate the response from the API to ensure that it doesn't contain any errors and if it does fail gracefully.
+	if ($trace) {
+		print Dumper($nahResponse);
+	}
+
+	# Validate the response from the API to ensure that it doesn't contain any errors and if it does fail gracefully.
 	if (ref($nahResponse) eq "NaElement" && $nahResponse->results_errno != 0) {
 		my $strResponse = $nahResponse->results_reason();
 		print $strMessage . $strResponse . "\n";
@@ -2094,7 +2128,11 @@ GetOptions(
 	"w=s" => \$strWarning,		"warning=s" => \$strWarning,
 	"c=s" => \$strCritical,		"critical=s" => \$strCritical,
 	"m=s" => \$strModifier,		"modifier=s" => \$strModifier,
-	"r=s" => \$strReport,		"report=s" => \$strReport);
+	"r=s" => \$strReport,		"report=s" => \$strReport,
+	"verbose" => \$verbose,
+	"debug" => \$debug,
+	"trace" => \$trace,
+);
 
 # Print help if a required field is not entered or if help is requested.
 if (!($strHost || $strUser || $strPassword || $strOption)) {
