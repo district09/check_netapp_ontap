@@ -1645,7 +1645,7 @@ sub space_threshold_helper {
 			# Test if various thresholds are defined and if they are then test if the monitored object exceeds them.
 			if (defined($hrefThresholds->{'space-percent'}) || defined($hrefThresholds->{'space-count'})) {
 				# Prepare certain variables pre-check to reduce code duplication.
-				my $intUsedPercent = ($hrfVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
+				my $intUsedPercent = ($hrefVolInfo->{$strVol}->{'space-used'} / $hrefVolInfo->{$strVol}->{'space-total'}) * 100;
 				$intUsedPercent = floor($intUsedPercent + 0.5);
 				my $strReadableUsed = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-used'});
 				my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
