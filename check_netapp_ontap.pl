@@ -1524,12 +1524,6 @@ sub calc_space_health {
 
 	foreach my $strObj (keys %$hrefSpaceInfo) {
 		$intObjectCount = $intObjectCount + 1;
-		# Don't check an object that has no space or is offline.
-		if (defined($hrefSpaceInfo->{$strObj}->{'space-total'})) {
-			if ($hrefSpaceInfo->{$strObj}->{'space-total'} == 0) {
-				next;
-			}
-		}
 		# If the monitored object is not online then test to see if it matches a user defined bad state.
 		if ($hrefSpaceInfo->{$strObj}->{'state'} ne "online") {
 			if (defined($hrefCritThresholds->{'strings'}) || defined($hrefWarnThresholds->{'strings'})) {
@@ -1605,6 +1599,16 @@ sub space_threshold_helper {
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
 
+		# Don't check an object that has no space
+		if (defined($hrefVolInfo->{$strVol}->{'space-total'})) {
+			if ($hrefVolInfo->{$strVol}->{'space-total'} == 0 || $hrefVolInfo->{$strVol}->{'space-total'} eq '0') {
+				if ($verbose) {
+					print "space-total is 0 on $strVol , ignore...\n";
+					print Dumper($hrefVolInfo->{$strVol});
+				}
+				next;
+			}
+		}
 		# Test added by Didier Tollenaers 03/04/2015 updated by Xavier Vallve 28/02/2017
 		if ($hrefVolInfo->{$strVol}->{'state'} eq 'online')  {
 
