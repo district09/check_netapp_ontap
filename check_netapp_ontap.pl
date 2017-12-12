@@ -1218,7 +1218,7 @@ sub get_quota_space {
 				$strQuotaName = $strQuotaName . "/" . $nahQuota->child_get_string("tree");
 			}
 
-		$hshQuotaUsage{$strQuotaName}{'sub'} = "get_quota_space";
+			$hshQuotaUsage{$strQuotaName}{'sub'} = "get_quota_space";
 			$hshQuotaUsage{$strQuotaName}{'space-hard-limit'} = $nahQuota->child_get_string("disk-limit");
 			$hshQuotaUsage{$strQuotaName}{'space-threshold'} = $nahQuota->child_get_string("threshold");
 			$hshQuotaUsage{$strQuotaName}{'space-soft-limit'} = $nahQuota->child_get_string("soft-disk-limit");
@@ -1942,6 +1942,7 @@ netapp_alarms
 	desc: Check for Netapp console alarms.
 	thresh: N/A not customizable.
 	node: The node option restricts this check by cluster-node name.
+	(This is not available in ONTAP > 9)
 
 cluster_health
 	desc: Check the cluster disks for failure or other potentially undesirable states.
@@ -2284,13 +2285,19 @@ if ($strOption eq "volume_health") {
 	# * COMPLETE
 	# Diagnostic and dashboard alarms
 
-	my $hrefAlarmInfo = get_netapp_alarms($nahStorage, $strVHost);
+	# Ontapi > 9 does not support dashboard any more
+	if ($intOntapiVersion >= 900) {
+		$intState = 0;
+		$strOutput = "OK: Ontapi >9 does not support dashboard and dashboard alarms any more.";
+	} else {
+		my $hrefAlarmInfo = get_netapp_alarms($nahStorage, $strVHost);
 
-	if (defined($strModifier)) {
-		$hrefAlarmInfo = filter_object($hrefAlarmInfo, $strModifier);
+		if (defined($strModifier)) {
+			$hrefAlarmInfo = filter_object($hrefAlarmInfo, $strModifier);
+		}
+
+		($intState, $strOutput) = calc_netapp_alarm_health($hrefAlarmInfo, $strWarning, $strCritical);
 	}
-
-	($intState, $strOutput) = calc_netapp_alarm_health($hrefAlarmInfo, $strWarning, $strCritical);
 } elsif ($strOption eq "vscan_health") {
 	# * COMPLETE
 	# Vscan status
