@@ -1779,7 +1779,7 @@ sub space_threshold_converter {
 			$hshWarnThresholds{'inodes-percent'} =~ s/\%i//;
 		} elsif ($strWarnThresh =~ m/^[0-9]*$/) {
 			$hshWarnThresholds{'inodes-count'} = $strWarnThresh;
-		} elsif ($strWarnThresh =~ m/^owner$/) {
+		} elsif ($strWarnThresh =~ m/^owner|is-home$/) {
 			$hshWarnThresholds{'owner'} = 1;
 		} elsif ($strWarnThresh =~ m/^[a-zA-Z]*$/) {
 			push(@aryStringsTemp, $strWarnThresh);
@@ -1802,7 +1802,7 @@ sub space_threshold_converter {
 			$hshCritThresholds{'inodes-percent'} =~ s/\%i//;
 		} elsif ($strCritThresh =~ m/^[0-9]*$/) {
 			$hshCritThresholds{'inodes-count'} = $strCritThresh;
-		} elsif ($strCritThresh =~ m/^owner$/) {
+		} elsif ($strCritThresh =~ m/^owner|is-home$/) {
 			$hshCritThresholds{'owner'} = 1;
 		} elsif ($strCritThresh =~ m/^[a-zA-Z]*$/) {
 			push(@aryStringsTemp, $strCritThresh);
