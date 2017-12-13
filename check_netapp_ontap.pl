@@ -1600,8 +1600,10 @@ sub calc_space_health {
 	}
 
 	# Test to see if the monitored object has crossed a defined space threshhold.
-	($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
-	($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
+	unless ( (defined($hrefCritThresholds->{'strings'}) && @{$hrefCritThresholds->{'strings'}}) || (defined($hrefWarnThresholds->{'strings'}) && @{$hrefWarnThresholds->{'strings'}}) || $hrefWarnThresholds->{'owner'} || $hrefCritThresholds->{'owner'} ) {
+		($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
+		($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
+	}
 
 
 
