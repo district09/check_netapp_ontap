@@ -3,7 +3,7 @@
 ### Idea
 
 This Perl script is able to monitor most components of a NetApp Ontap cluster, such as volume, aggregate, 
-snapshot, quota, snapmirror, firler hardware, port, interface cluster and disk health.
+snapshot, quota, snapmirror, filer hardware, port, interface cluster and disk health.
 
 ### Status
 
