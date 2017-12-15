@@ -7,7 +7,7 @@ snapshot, quota, snapmirror, firler hardware, port, interface cluster and disk h
 
 ### Status
 
-Poduction ready.
+Production ready.
 
 ### How To
 
