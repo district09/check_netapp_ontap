@@ -7,7 +7,7 @@ snapshot, quota, snapmirror, filer hardware, port, interface cluster and disk he
 
 ### Status
 
-Poduction ready.
+Production ready.
 
 ### How To
 
