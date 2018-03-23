@@ -11,6 +11,9 @@ Production ready.
 
 ### How To
 
+This script requires NetApp Manageability SDK for Perl to be installed.
+Can be found on https://mysupport.netapp.com/NOW/cgi-bin/software
+
 Please visit https://outsideit.net/monitoring-netapp-ontap/ for more information on how to use this plugin.
 
 ### Help
