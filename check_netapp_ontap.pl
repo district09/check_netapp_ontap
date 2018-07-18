@@ -18,6 +18,7 @@
 #   License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use warnings;
+# use lib "/usr/lib64/nagios/modules/netapp";
 use strict;
 use NaServer;
 use NaElement;
