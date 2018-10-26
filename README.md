@@ -3,15 +3,18 @@
 ### Idea
 
 This Perl script is able to monitor most components of a NetApp Ontap cluster, such as volume, aggregate, 
-snapshot, quota, snapmirror, firler hardware, port, interface cluster and disk health.
+snapshot, quota, snapmirror, filer hardware, port, interface cluster and disk health.
 
 ### Status
 
-Poduction ready. Please visit http://outsideit.net/check-netapp-ontap for more information.
+Production ready.
 
 ### How To
 
-Please visit http://outsideit.net/check-netapp-ontap for more information on how to use this plugin.
+This script requires NetApp Manageability SDK for Perl to be installed.
+Can be found on https://mysupport.netapp.com/NOW/cgi-bin/software
+
+Please visit https://outsideit.net/monitoring-netapp-ontap/ for more information on how to use this plugin.
 
 ### Help
 
@@ -19,7 +22,7 @@ In case you find a bug or have a feature request, please make an issue on GitHub
 
 ### On Nagios Exchange
 
-http://exchange.nagios.org/directory/Plugins/Hardware/Storage-Systems/SAN-and-NAS/NetApp/Check-Netapp-Ontap/details
+https://exchange.nagios.org/directory/Plugins/Hardware/Storage-Systems/SAN-and-NAS/NetApp/Check-Netapp-Ontap/details
 
 ### Copyright
 
