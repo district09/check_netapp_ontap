@@ -23,7 +23,9 @@ use NaServer;
 use NaElement;
 use Getopt::Long;
 use POSIX;
-use experimental 'smartmatch';
+
+# do not show smartmatch warnings
+no warnings 'experimental::smartmatch';
 
 my $verbose = undef;
 my $debug = undef;
