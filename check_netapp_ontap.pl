@@ -2171,23 +2171,23 @@ $strSuboption = undef;
 $strReport = "long";
 
 GetOptions(
-	"H=s" => \$strHost,		"hostname=s" => \$strHost,
-	"n=s" => \$strVHost,		"node=s" => \$strVHost,
-	"u=s" => \$strUser,		"user=s" => \$strUser,
-	"p=s" => \$strPassword,		"password=s" => \$strPassword,
-	"o=s" => \$strOption,		"option=s" => \$strOption,
-	"s=s" => \$strSuboption,	"suboption=s" => \$strSuboption,
-	"w=s" => \$strWarning,		"warning=s" => \$strWarning,
-	"c=s" => \$strCritical,		"critical=s" => \$strCritical,
-	"m=s" => \$strModifier,		"modifier=s" => \$strModifier,
-	"r=s" => \$strReport,		"report=s" => \$strReport,
+	"hostname|H=s" => \$strHost,
+	"node|n=s" => \$strVHost,
+	"user|u=s" => \$strUser,
+	"password|p=s" => \$strPassword,
+	"option|o=s" => \$strOption,
+	"suboption|s=s" => \$strSuboption,
+	"warning|w=s" => \$strWarning,
+	"critical|c=s" => \$strCritical,
+	"modifier|m=s" => \$strModifier,
+	"report|r=s" => \$strReport,
 	"verbose" => \$verbose,
 	"debug" => \$debug,
 	"trace" => \$trace,
 );
 
 # Print help if a required field is not entered or if help is requested.
-if (!($strHost || $strUser || $strPassword || $strOption)) {
+unless ($strHost && $strUser && $strPassword && $strOption) {
 	print "A required option is not set!\n";
 	help();
 }
