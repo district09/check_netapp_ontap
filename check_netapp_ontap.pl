@@ -284,7 +284,7 @@ sub calc_spare_health {
 
 	NODE:
 	foreach my $node (keys %$hrefSpareInfo) {
-		if (defined($strVHost) && $node ne $strVHost) {
+		if (defined($strVHost) and $node ne $strVHost) {
 			next NODE;
 		}
 
@@ -295,13 +295,13 @@ sub calc_spare_health {
 			$intObjectCount++;
 
 			my $zeroedStatus = $hrefSpareInfo->{$node}->{$strSpare}->{'zeroed'};
-			if (defined($zeroedStatus) && $zeroedStatus ne "true") {
+			if (defined($zeroedStatus) and $zeroedStatus ne "true") {
 				$notZeroedCount++;
 			}
 			my $status = $hrefSpareInfo->{$node}->{$strSpare}->{'status'};
-			if (defined($status && $status eq "spare")) {
+			if (defined($status) and $status eq "spare") {
 				$spareCount++;
-			} elsif (defined($status && $status eq "unassigned")) {
+			} elsif (defined($status) and $status eq "unassigned") {
 				$unassignedCount++;
 			} else {
 				$unknownCount++;
@@ -463,7 +463,7 @@ sub calc_interface_health {
 	my $intState = 0;
 	my $intObjectCount = 0;
 	my $strOutput;
-	my $strMultiline;
+	my $strMultiline = '';
 	my $intNbIncorrectStatus = 0;
 	my $intNbIncorrectNode = 0;
 	my $intNbIncorrectPort = 0;
