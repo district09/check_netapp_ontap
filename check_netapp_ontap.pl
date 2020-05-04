@@ -33,6 +33,26 @@ if ($verbose || $debug || $trace) {
 	use Data::Dumper;
 }
 
+# Conditionally call add_child_chain(): only if the first arg is defined
+# call it with all args and the first one appened at the end
+sub cond_add_child_chain {
+    my $str = shift // return;
+    add_child_chain( @_, $str );
+}
+
+# Add the second argument as a child of the first, the third as a child
+# of the second, and so on. Add the last two args as a string to the last
+# child.
+sub add_child_chain {
+    my $parent = shift;
+    while( @_ > 2 ) {
+        my $child = shift;
+        $parent->child_add( $child );
+        $parent = $child;
+    }
+    $parent->child_add_string( @_ );
+}
+
 ##############################################
 ## DISK HEALTH
 ##############################################
@@ -46,12 +66,7 @@ sub get_disk_info {
 	my $strActiveTag = "";
 	my %hshDiskInfo;
 
-	if (defined($strVHost)) {
-		$nahDiskIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahDiskInfo);
-		$nahDiskInfo->child_add($nahDiskOwnerInfo);
-		$nahDiskOwnerInfo->child_add_string("home-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahDiskIterator, $nahQuery, $nahDiskInfo, $nahDiskOwnerInfo, "home-node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -181,12 +196,7 @@ sub get_spare_info {
 	my $strActiveTag = "";
 	my %hshSpareInfo;
 
-	if (defined($strVHost)) {
-		$nahSpareIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahSpareInfo);
-		$nahSpareInfo->child_add($nahSpareOwnerInfo);
-		$nahSpareOwnerInfo->child_add_string("home-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahSpareIterator, $nahQuery, $nahSpareInfo, $nahSpareOwnerInfo, "home-node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -370,11 +380,7 @@ sub get_port_health {
 	my $strActiveTag = "";
 	my %hshPortInfo;
 
-	if (defined($strVHost)) {
-		$nahPortIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahPortInfo);
-		$nahPortInfo->child_add_string("node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahPortIterator, $nahQuery, $nahPortInfo, "node");
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -418,11 +424,7 @@ sub get_interface_health {
 	my $strActiveTag = "";
 	my %hshInterfaceInfo;
 
-	if (defined($strVHost)) {
-		$nahIntIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahIntInfo);
-		$nahIntInfo->child_add_string("vserver", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahIntIterator, $nahQuery, $nahIntInfo, "vserver" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -604,11 +606,7 @@ sub get_cluster_node_health {
 	my $strActiveTag = "";
 	my %hshClusterNodeInfo;
 
-	if (defined($strVHost)) {
-		$nahClusterNodeIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahClusterNodeInfo);
-		$nahClusterNodeInfo->child_add_string("originating-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahClusterNodeIterator, $nahQuery, $nahClusterNodeInfo, "originating-node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -668,11 +666,7 @@ sub get_cluster_health {
 	my $strActiveTag = "";
 	my %hshClusterInfo;
 
-	if (defined($strVHost)) {
-		$nahClusterIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahClusterInfo);
-		$nahClusterInfo->child_add_string("originating-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahClusterIterator, $nahQuery, $nahClusterInfo, "originating-node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -743,11 +737,7 @@ sub get_vscan_info {
 	my $strActiveTag = "";
 	my %hshVscanInfo;
 
-	if (defined($strVHost)) {
-		$nahVscanIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahVscanInfo);
-		$nahVscanInfo->child_add_string("vserver", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahVscanIterator, $nahQuery, $nahVscanInfo, "vserver" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -807,11 +797,7 @@ sub get_netapp_alarms {
 	my $strActiveTag = "";
 	my %hshAlarms;
 
-	if (defined($strVHost)) {
-		$nahAlarmIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahDashInfo);
-		$nahDashInfo->child_add_string("node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahAlarmIterator, $nahQuery, $nahDashInfo, "node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -909,11 +895,7 @@ sub get_filer_hardware {
 	my $strActiveTag = "";
 	my %hshFilerHardware;
 
-	if (defined($strVHost)) {
-		$nahFilerIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahNodeInfo);
-		$nahNodeInfo->child_add_string("node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahFilerIterator, $nahQuery, $nahNodeInfo, "node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -1090,11 +1072,7 @@ sub get_snapmirror_lag {
 	my %hshSMHealth;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahSMIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahSMInfo);
-		$nahSMInfo->child_add_string("destination-volume-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahSMIterator, $nahQuery, $nahSMInfo, "destination-volume-node" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	$nahSMIterator->child_add_string("max-records", 100);
@@ -1233,11 +1211,7 @@ sub get_quota_space {
 	my %hshQuotaUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahQuotaIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahQuotaInfo);
-		$nahQuotaInfo->child_add_string("vserver", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahQuotaIterator, $nahQuery, $nahQuotaInfo, "vserver" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	while(defined($strActiveTag)) {
@@ -1364,12 +1338,7 @@ sub get_aggregate_space {
 	my %hshAggUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahAggIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahAggInfo);
-		$nahAggInfo->child_add($nahAggIdInfo);
-		$nahAggIdInfo->child_add_string("home-name", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahAggIterator, $nahQuery, $nahAggInfo, $nahAggIdInfo, "home-name" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	while(defined($strActiveTag)) {
@@ -1437,12 +1406,7 @@ sub get_snap_space {
 	my %hshVolUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahVolIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahVolInfo);
-		$nahVolInfo->child_add($nahVolIdInfo);
-		$nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahVolIterator, $nahQuery, $nahVolInfo, $nahVolIdInfo, "owning-vserver-name" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	$nahVolIterator->child_add_string("max-records", 100);
@@ -1520,12 +1484,7 @@ sub get_volume_space {
 	my %hshVolUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahVolIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahVolInfo);
-		$nahVolInfo->child_add($nahVolIdInfo);
-		$nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahVolIterator, $nahQuery, $nahVolInfo, $nahVolIdInfo, "owning-vserver-name" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	$nahVolIterator->child_add_string("max-records", 100);
