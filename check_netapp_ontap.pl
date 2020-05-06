@@ -24,8 +24,8 @@ use NaElement;
 use Getopt::Long;
 use POSIX;
 
-# do not show smartmatch warnings
-no warnings 'experimental::smartmatch';
+# do not show smartmatch warnings on older perl versions
+no if $] >= 5.017011, warnings => 'experimental::smartmatch';
 
 my $verbose = undef;
 my $debug = undef;
