@@ -55,6 +55,11 @@ Copy `check_netapp_ontap.pl` script to your nagios libexec folder and configure 
 
 Check the space and inode health of a vServer volume on a NetApp Ontap cluster. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to accomodate large volume monitoring better. thresh: space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), “offline” keyword node: The node option restricts this check by vserver name.
 
+* Examples
+  * `-w 80%` - Warn if volume grows more than 80% full
+  * `-w 100GB` - Warn if volume has less than 100GB free space
+  * `-w 80%,50GB` - Warn if volume is more than 80% used *and* has less than 50GB free space
+
 **aggregate_health**
 
 Check the space and inode health of a cluster aggregate on a NetApp Ontap cluster. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large aggregate monitoring. thresh: space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), “offline” keyword, “is-home” keyword node: The node option restricts this check by cluster-node name.
