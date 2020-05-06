@@ -1954,7 +1954,7 @@ cluster_health
 	thresh: N/A not customizable.
 	node: The node option restricts this check by cluster-node name.
 
-clusternnode_health
+clusternode_health
 	desc: Check the cluster-nodes for unhealthy conditions
 	thresh: N/A not customizable.
 	node: The node option restricts this check by cluster-node name.
