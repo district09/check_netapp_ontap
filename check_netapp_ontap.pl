@@ -1898,17 +1898,17 @@ sub help {
 
 ===OPTION LIST===
 volume_health
-	desc: Check the space and inode health of a vServer volume. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large volume monitoring.
+	desc: Check the space and inode health of a vServer volume. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large volume monitoring. Separate values with comma.
 	thresh: Space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), "offline" keyword.
 	node: The node option restricts this check by vserver name.
 
 aggregate_health
-	desc: Check the space and inode health of a cluster aggregate. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large aggregate monitoring.
+	desc: Check the space and inode health of a cluster aggregate. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large aggregate monitoring. Separate values with comma.
 	thresh: Space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), "offline" keyword, "is-home" keyword.
 	node: The node option restricts this check by cluster-node name.
 
 snapshot_health
-	desc: Check the space and inode health of a vServer snapshot. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large snapshot monitoring.
+	desc: Check the space and inode health of a vServer snapshot. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large snapshot monitoring. Separate values with comma.
 	thresh: Space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), "offline" keyword.
 	node: The node option restricts this check by vserver name.
 
