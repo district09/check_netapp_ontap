@@ -23,9 +23,6 @@ use NaElement;
 use Getopt::Long;
 use POSIX;
 
-# do not show smartmatch warnings on older perl versions
-no if $] >= 5.017011, warnings => 'experimental::smartmatch';
-
 my $verbose = undef;
 my $debug = undef;
 my $trace = undef;
@@ -472,10 +469,8 @@ sub calc_interface_health {
 	my ($strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort) = (1) x 3;
 	if (defined $strSuboption) {
 		$strCheckLIFStatus = $strCheckLIFHomeNode = $strCheckLIFHomePort = 0;
-		my @arySuboption = split(",",$strSuboption);
-		if ("status" ~~ @arySuboption) { $strCheckLIFStatus = 1; }
-		if ("home-node" ~~ @arySuboption) { $strCheckLIFHomeNode = 1; }
-		if ("home-port" ~~ @arySuboption) { $strCheckLIFHomePort = 1; }
+		my %suboptions = map { $_ => 1 } split(",",$strSuboption);
+		($strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort) = @suboptions{qw/ status home-node home-port/};
 	}
 
 	foreach my $strInt (keys %$hrefInterfaceInfo) {
