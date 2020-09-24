@@ -69,19 +69,50 @@ Check the space and inode health of a cluster aggregate on a NetApp Ontap cluste
 Check the space and inode health of a vServer snapshot. If space % and space in *B are both defined the smaller value of the two will be used when deciding if the volume is in a warning or critical state. This allows you to better accomodate large snapshot monitoring. thresh: space % used, space in *B (i.e MB) remaining, inode count remaining, inode % used (Usage example: 80%i), “offline” keyword node: The node option restricts this check by vserver name.
 
 **quota_health**
+
 Check that the space and file thresholds have not been crossed on a quota. thresh: N/A storage defined. node: The node option restricts this check by vserver name. snapmirror_health: Check the lag time and health flag of the snapmirror relationships. thresh: snapmirror lag time (valid intervals are s, m, h, d). node: The node options restricts this check by snapmirror destination cluster-node name.
+
+**snapmirror_health**
+
+Check the lag time and health flag of the snapmirror relationships. thresh: Snapmirror lag time (valid intervals are s, m, h, d). node: The node options restricts this check by snapmirror destination cluster-node name.
 
 **filer_hardware_health**
 
-Check the environment hardware health of the filers (fan, psu, temperature, battery). thresh: component name (fan, psu, temperature, battery). There is no default alert level they MUST be defined. node: The node option restricts this check by cluster-node name. port_health: Checks the state of a physical network port. thresh: N/A not customizable. node: The node option restricts this check by cluster-node name.
+Check the environment hardware health of the filers (fan, psu, temperature, battery). thresh: component name (fan, psu, temperature, battery). There is no default alert level they MUST be defined. node: The node option restricts this check by cluster-node name.
 
-**interface_health desc**
+**port_health**
+
+Checks the state of a physical network port. thresh: N/A not customizable. node: The node option restricts this check by cluster-node name.
+
+**vscan_health**
+
+Check if vscan is disabled. node: The node option restricts this check by vserver name.
+
+**interface_health**
 
 Check that a LIF is in the correctly configured state and that it is on its home node and port. Additionally checks the state of a physical port. thresh: N/A not customizable. node: The node option restricts this check by vserver name.
 
 **netapp_alarms**
 
-Check for Netapp console alarms. thresh: N/A not customizable. node: The node option restricts this check by cluster-node name. cluster_health desc: Check the cluster disks for failure or other potentially undesirable states. thresh: N/A not customizable. node: The node option restricts this check by cluster-node name. disk_health: Check the health of the disks in the cluster. thresh: Not customizable yet. node: The node option restricts this check by cluster-node name. For keyword thresholds, if you want to ignore alerts for that particular keyword you set it at the same threshold that the alert defaults to.  
+Check for Netapp console alarms. thresh: N/A not customizable. node: The node option restricts this check by cluster-node name.
+
+**cluster_health**
+
+Check the cluster disks for failure or other potentially undesirable states. thresh: N/A not customizable. node: The node option restricts this check by cluster-node name.
+
+**clusternnode_health**
+
+Check the cluster-nodes for unhealthy conditions. thresh: N/A not customizable. node: The node option restricts this check by cluster-node name.
+
+**disk_health**
+
+Check the health of the disks in the cluster. thresh: Not customizable yet. node: The node option restricts this check by cluster-node name.
+
+**disk_spare**
+
+Check the number of spare disks. thresh: Warning / critical required spare disks. Default thresholds are 2 / 1. node: The node option restricts this check by cluster-node name.
+
+For keyword thresholds, if you want to ignore alerts for that particular keyword you set it at the same threshold that the alert defaults to.
 
 ## Help
 
