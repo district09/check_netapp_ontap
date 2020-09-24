@@ -50,7 +50,7 @@ sub get_disk_info {
 		$nahDiskIterator->child_add($nahQuery);
 		$nahQuery->child_add($nahDiskInfo);
 		$nahDiskInfo->child_add($nahDiskOwnerInfo);
-		$nahDiskOwnerInfo->child_add_string("home-node", $strVHost);
+		$nahDiskOwnerInfo->child_add_string("home-node-name", $strVHost);
 	}
 
 	while(defined($strActiveTag)) {
@@ -185,7 +185,7 @@ sub get_spare_info {
 		$nahSpareIterator->child_add($nahQuery);
 		$nahQuery->child_add($nahSpareInfo);
 		$nahSpareInfo->child_add($nahSpareOwnerInfo);
-		$nahSpareOwnerInfo->child_add_string("home-node", $strVHost);
+		$nahSpareOwnerInfo->child_add_string("home-node-name", $strVHost);
 	}
 
 	while(defined($strActiveTag)) {
