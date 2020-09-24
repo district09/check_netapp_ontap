@@ -226,6 +226,53 @@ sub get_spare_info {
 		}
 	}
 
+	# Include ADP spares, which are only reported under aggregate spares (not in the spare container)
+	$nahSpareIterator = NaElement->new("aggr-spare-get-iter");
+	$nahQuery = NaElement->new("query");
+	$nahSpareInfo = NaElement->new("storage-disk-info");
+	$nahSpareOwnerInfo = NaElement->new("disk-ownership-info");
+	$strActiveTag = "";
+
+	if (defined($strVHost)) {
+		$nahSpareIterator->child_add($nahQuery);
+		$nahQuery->child_add($nahSpareInfo);
+		$nahSpareInfo->child_add($nahSpareOwnerInfo);
+		$nahSpareOwnerInfo->child_add_string("original-owner", $strVHost);
+	}
+
+	while(defined($strActiveTag)) {
+		if ($strActiveTag ne "") {
+			$nahSpareIterator->child_add_string("tag", $strActiveTag);
+		}
+
+		$nahSpareIterator->child_add_string("max-records", 600);
+		my $nahResponse = $nahStorage->invoke_elem($nahSpareIterator);
+		validate_ontapi_response($nahResponse, "Failed filer health query: ");
+
+		$strActiveTag = $nahResponse->child_get_string("next-tag");
+
+		if ($nahResponse->child_get_string("num-records") == 0) {
+			last;
+		}
+
+		SPARE:
+		foreach my $nahSpare ($nahResponse->child_get("attributes-list")->children_get()) {
+			my $strSpareName = $nahSpare->child_get_string("disk");
+			my $strUsableBlk = $nahSpare->child_get_string("local-usable-data-size-blks");
+
+			# Skip root partition spares
+			if (!defined($strUsableBlk)) {
+				next SPARE;
+			} else {
+				my $nodeName = $nahSpare->child_get_string("original-owner");
+				my $zeroed = $nahSpare->child_get_string('is-disk-zeroed');
+
+				$hshSpareInfo{$nodeName}{$strSpareName}{'status'} = 'spare';
+				$hshSpareInfo{$nodeName}{$strSpareName}{'zeroed'} = $zeroed;
+			}
+		}
+	}
+
 	return \%hshSpareInfo;
 }
 
