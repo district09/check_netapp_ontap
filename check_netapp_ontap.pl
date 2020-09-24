@@ -1,15 +1,14 @@
 #!/usr/bin/perl
 
 # Script name:      check_netapp_ontap.pl
-# Version:	    v3.02.200923
+# Version:          v3.03.200924
 # Original author:  Murphy John
 # Current author:   D'Haese Willem
-# Contributors:     Waipeng, Ditol, Charton Yannick, Tony Goetheyn
+# Contributors:     Waipeng, Ditol, Charton Yannick, Goetheyn Tony, Malone Josh
 # Purpose:          Checks NetApp ontapi clusters for various problems, like volume, aggregate, snapshot,
 #                   quota, snapmirror, filer hardware, port, interface, cluster and disk health, but also NetApp alarms
-# On Github:        https://github.com/willemdh/check_netapp_ontap
+# On Github:        https://github.com/OutsideIT/check_netapp_ontap
 # On OutsideIT:     https://outsideit.net/monitoring-netapp-ontap/
-#
 # Copyright:
 #   This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
 #   by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed
