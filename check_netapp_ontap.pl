@@ -1518,6 +1518,7 @@ sub get_volume_space {
 	my $nahTag = NaElement->new("tag");
 	my $strActiveTag = "";
 	my %hshVolUsage;
+	my $volAutoSizeAttr;
 
 	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
@@ -1570,7 +1571,12 @@ sub get_volume_space {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 			} else {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
-				$hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-total");
+				$volAutoSizeAttr = $nahVol->child_get('volume-autosize-attributes');
+				if (defined($volAutoSizeAttr) && $volAutoSizeAttr->child_get_string('mode') =~ m/^grow(?:_shrink)$/) {
+					$hshVolUsage{$strVolName}{'space-total'} = $volAutoSizeAttr->child_get_string("maximum-size");
+				} else {
+					$hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-total");
+				}
 				if ($debug) {
 					if ( $hshVolUsage{$strVolName}{'space-total'} == 0 || $hshVolUsage{$strVolName}{'space-total'} eq '0' ) {
 						print "Volume $strVolName reports size-total of 0\n";
@@ -1598,7 +1604,7 @@ sub calc_space_health {
 	my $intState = 0;
 	my $intObjectCount = 0;
 	my $strOutput;
-	my $perfOutput;
+	my %perfOutput;
 	my $hrefObjectState;
 
 	foreach my $strObj (keys %$hrefSpaceInfo) {
