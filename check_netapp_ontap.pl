@@ -4,7 +4,7 @@
 # Version:          v3.03.200924
 # Original author:  Murphy John
 # Current author:   D'Haese Willem
-# Contributors:     Waipeng, Ditol, Charton Yannick, Goetheyn Tony, Malone Josh
+# Contributors:     Yip Wai Peng, Anriot Alexandre, Charton Yannick, Goetheyn Tony, Malone Josh
 # Purpose:          Checks NetApp ontapi clusters for various problems, like volume, aggregate, snapshot,
 #                   quota, snapmirror, filer hardware, port, interface, cluster and disk health, but also NetApp alarms
 # On Github:        https://github.com/OutsideIT/check_netapp_ontap
