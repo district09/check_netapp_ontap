@@ -23,14 +23,31 @@ use NaElement;
 use Getopt::Long;
 use POSIX;
 
-# do not show smartmatch warnings on older perl versions
-no if $] >= 5.017011, warnings => 'experimental::smartmatch';
-
 my $verbose = undef;
 my $debug = undef;
 my $trace = undef;
 if ($verbose || $debug || $trace) {
 	use Data::Dumper;
+}
+
+# Conditionally call add_child_chain(): only if the first arg is defined
+# call it with all args and the first one appened at the end
+sub cond_add_child_chain {
+    my $str = shift // return;
+    add_child_chain( @_, $str );
+}
+
+# Add the second argument as a child of the first, the third as a child
+# of the second, and so on. Add the last two args as a string to the last
+# child.
+sub add_child_chain {
+    my $parent = shift;
+    while( @_ > 2 ) {
+        my $child = shift;
+        $parent->child_add( $child );
+        $parent = $child;
+    }
+    $parent->child_add_string( @_ );
 }
 
 ##############################################
@@ -46,12 +63,7 @@ sub get_disk_info {
 	my $strActiveTag = "";
 	my %hshDiskInfo;
 
-	if (defined($strVHost)) {
-		$nahDiskIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahDiskInfo);
-		$nahDiskInfo->child_add($nahDiskOwnerInfo);
-		$nahDiskOwnerInfo->child_add_string("home-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahDiskIterator, $nahQuery, $nahDiskInfo, $nahDiskOwnerInfo, "home-node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -181,12 +193,7 @@ sub get_spare_info {
 	my $strActiveTag = "";
 	my %hshSpareInfo;
 
-	if (defined($strVHost)) {
-		$nahSpareIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahSpareInfo);
-		$nahSpareInfo->child_add($nahSpareOwnerInfo);
-		$nahSpareOwnerInfo->child_add_string("home-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahSpareIterator, $nahQuery, $nahSpareInfo, $nahSpareOwnerInfo, "home-node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -284,7 +291,7 @@ sub calc_spare_health {
 
 	NODE:
 	foreach my $node (keys %$hrefSpareInfo) {
-		if (defined($strVHost) && $node ne $strVHost) {
+		if (defined($strVHost) and $node ne $strVHost) {
 			next NODE;
 		}
 
@@ -295,13 +302,13 @@ sub calc_spare_health {
 			$intObjectCount++;
 
 			my $zeroedStatus = $hrefSpareInfo->{$node}->{$strSpare}->{'zeroed'};
-			if (defined($zeroedStatus) && $zeroedStatus ne "true") {
+			if (defined($zeroedStatus) and $zeroedStatus ne "true") {
 				$notZeroedCount++;
 			}
 			my $status = $hrefSpareInfo->{$node}->{$strSpare}->{'status'};
-			if (defined($status && $status eq "spare")) {
+			if (defined($status) and $status eq "spare") {
 				$spareCount++;
-			} elsif (defined($status && $status eq "unassigned")) {
+			} elsif (defined($status) and $status eq "unassigned") {
 				$unassignedCount++;
 			} else {
 				$unknownCount++;
@@ -370,11 +377,7 @@ sub get_port_health {
 	my $strActiveTag = "";
 	my %hshPortInfo;
 
-	if (defined($strVHost)) {
-		$nahPortIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahPortInfo);
-		$nahPortInfo->child_add_string("node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahPortIterator, $nahQuery, $nahPortInfo, "node");
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -418,11 +421,7 @@ sub get_interface_health {
 	my $strActiveTag = "";
 	my %hshInterfaceInfo;
 
-	if (defined($strVHost)) {
-		$nahIntIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahIntInfo);
-		$nahIntInfo->child_add_string("vserver", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahIntIterator, $nahQuery, $nahIntInfo, "vserver" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -463,17 +462,15 @@ sub calc_interface_health {
 	my $intState = 0;
 	my $intObjectCount = 0;
 	my $strOutput;
-	my $strMultiline;
+	my $strMultiline = '';
 	my $intNbIncorrectStatus = 0;
 	my $intNbIncorrectNode = 0;
 	my $intNbIncorrectPort = 0;
 	my ($strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort) = (1) x 3;
 	if (defined $strSuboption) {
 		$strCheckLIFStatus = $strCheckLIFHomeNode = $strCheckLIFHomePort = 0;
-		my @arySuboption = split(",",$strSuboption);
-		if ("status" ~~ @arySuboption) { $strCheckLIFStatus = 1; }
-		if ("home-node" ~~ @arySuboption) { $strCheckLIFHomeNode = 1; }
-		if ("home-port" ~~ @arySuboption) { $strCheckLIFHomePort = 1; }
+		my %suboptions = map { $_ => 1 } split(",",$strSuboption);
+		($strCheckLIFStatus, $strCheckLIFHomeNode, $strCheckLIFHomePort) = @suboptions{qw/ status home-node home-port/};
 	}
 
 	foreach my $strInt (keys %$hrefInterfaceInfo) {
@@ -604,11 +601,7 @@ sub get_cluster_node_health {
 	my $strActiveTag = "";
 	my %hshClusterNodeInfo;
 
-	if (defined($strVHost)) {
-		$nahClusterNodeIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahClusterNodeInfo);
-		$nahClusterNodeInfo->child_add_string("originating-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahClusterNodeIterator, $nahQuery, $nahClusterNodeInfo, "originating-node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -668,11 +661,7 @@ sub get_cluster_health {
 	my $strActiveTag = "";
 	my %hshClusterInfo;
 
-	if (defined($strVHost)) {
-		$nahClusterIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahClusterInfo);
-		$nahClusterInfo->child_add_string("originating-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahClusterIterator, $nahQuery, $nahClusterInfo, "originating-node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -743,11 +732,7 @@ sub get_vscan_info {
 	my $strActiveTag = "";
 	my %hshVscanInfo;
 
-	if (defined($strVHost)) {
-		$nahVscanIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahVscanInfo);
-		$nahVscanInfo->child_add_string("vserver", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahVscanIterator, $nahQuery, $nahVscanInfo, "vserver" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -807,11 +792,7 @@ sub get_netapp_alarms {
 	my $strActiveTag = "";
 	my %hshAlarms;
 
-	if (defined($strVHost)) {
-		$nahAlarmIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahDashInfo);
-		$nahDashInfo->child_add_string("node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahAlarmIterator, $nahQuery, $nahDashInfo, "node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -909,11 +890,7 @@ sub get_filer_hardware {
 	my $strActiveTag = "";
 	my %hshFilerHardware;
 
-	if (defined($strVHost)) {
-		$nahFilerIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahNodeInfo);
-		$nahNodeInfo->child_add_string("node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahFilerIterator, $nahQuery, $nahNodeInfo, "node" );
 
 	while(defined($strActiveTag)) {
 		if ($strActiveTag ne "") {
@@ -1090,11 +1067,7 @@ sub get_snapmirror_lag {
 	my %hshSMHealth;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahSMIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahSMInfo);
-		$nahSMInfo->child_add_string("destination-volume-node", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahSMIterator, $nahQuery, $nahSMInfo, "destination-volume-node" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	$nahSMIterator->child_add_string("max-records", 100);
@@ -1233,11 +1206,7 @@ sub get_quota_space {
 	my %hshQuotaUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahQuotaIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahQuotaInfo);
-		$nahQuotaInfo->child_add_string("vserver", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahQuotaIterator, $nahQuery, $nahQuotaInfo, "vserver" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	while(defined($strActiveTag)) {
@@ -1364,12 +1333,7 @@ sub get_aggregate_space {
 	my %hshAggUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahAggIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahAggInfo);
-		$nahAggInfo->child_add($nahAggIdInfo);
-		$nahAggIdInfo->child_add_string("home-name", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahAggIterator, $nahQuery, $nahAggInfo, $nahAggIdInfo, "home-name" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	while(defined($strActiveTag)) {
@@ -1437,12 +1401,7 @@ sub get_snap_space {
 	my %hshVolUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahVolIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahVolInfo);
-		$nahVolInfo->child_add($nahVolIdInfo);
-		$nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahVolIterator, $nahQuery, $nahVolInfo, $nahVolIdInfo, "owning-vserver-name" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	$nahVolIterator->child_add_string("max-records", 100);
@@ -1520,12 +1479,7 @@ sub get_volume_space {
 	my %hshVolUsage;
 
 	# Narrow search to only the requested node if configured by user with the -n option
-	if (defined($strVHost)) {
-		$nahVolIterator->child_add($nahQuery);
-		$nahQuery->child_add($nahVolInfo);
-		$nahVolInfo->child_add($nahVolIdInfo);
-		$nahVolIdInfo->child_add_string("owning-vserver-name", $strVHost);
-	}
+    cond_add_child_chain( $strVHost, $nahVolIterator, $nahQuery, $nahVolInfo, $nahVolIdInfo, "owning-vserver-name" );
 
 	# The active tag is a feature of the NetApp API that allows you to do queries in batches. In this case we are getting records in batches of 100.
 	$nahVolIterator->child_add_string("max-records", 100);
@@ -2159,6 +2113,58 @@ sub filter_object {
 	return $hrefObjectsToFilter;
 }
 
+# Generic check function: call the getvals function to obtain data,
+# optionally filter its result, finally call the calc function to perform
+# the check against levels and return its result
+sub check {
+    my ($getvals, $calc, $args) = @_;
+
+    my $obj = $getvals->( @$args{qw/ storage vhost warn crit/} );
+    $obj = filter_object( $obj, $args->{modifier} ) if defined $args->{modifier};
+    return $calc->( $obj, @$args{qw/ warn crit subopt report/} );
+}
+
+# Add default warn/crit levels if they should be undefined
+sub deflvl {
+    my ($args, $def_warn, $def_crit) = @_;
+    $args->{warn} //= $def_warn;
+    $args->{crit} //= $def_crit;
+    return $args;
+}
+
+my %CHECKS = (
+    volume_health => sub { check( \&get_volume_space, \&calc_space_health, deflvl( shift, "80%", "95%" )) },
+    aggregate_health => sub { check( \&get_aggregate_space, \&calc_space_health, deflvl( shift, "80%", "95%" )) },
+    snapshot_health => sub { check( \&get_snap_space, \&calc_space_health, deflvl( shift, "80%", "95%" )) },
+    quota_health => sub { check( \&get_quota_space, \&calc_quota_health, deflvl( shift, "80%", "95%" )) },
+    snapmirror_health => sub { check( \&get_snapmirror_lag, \&calc_snapmirror_health, shift ) },
+    filer_hardware_health => sub { check( \&get_filer_hardware, \&calc_filer_hardware_health, shift ) },
+    interface_health => sub { check( \&get_interface_health, \&calc_interface_health, shift ) },
+    port_health => sub { check( \&get_port_health, \&calc_interface_health, shift ) },
+    vscan_health => sub { check( \&get_vscan_info, \&calc_vscan_health, shift ) },
+    cluster_health => sub { check( \&get_cluster_health, \&calc_cluster_health, shift ) },
+    clusternode_health => sub { check( \&get_cluster_node_health, \&calc_cluster_node_health, shift ) },
+    disk_health => sub { check( \&get_disk_info, \&calc_disk_health, shift ) },
+    disk_spare => sub {
+        my $args = shift;
+        check(
+            sub { get_spare_info   ( shift, $args->{vhost}, @_ ) },
+            sub { calc_spare_health( shift, $args->{vhost}, @_ ) },
+            deflvl( $args, 1, 2 )
+        )
+    },
+    netapp_alarms => sub {
+        my $args = shift;
+        $args->{apiver} >= 900
+            and return ( 0 ,"OK: Ontapi >9 does not support dashboard and dashboard alarms any more." );
+        check( \&get_netapp_alarms, \&calc_netapp_alarm_health, $args )
+    },
+    ## FUTURE STUFF----
+    # DISK IO, DE-DUPE LAG
+
+);
+
+
 ##############################################
 ##
 ## BEGIN MAIN
@@ -2171,23 +2177,23 @@ $strSuboption = undef;
 $strReport = "long";
 
 GetOptions(
-	"H=s" => \$strHost,		"hostname=s" => \$strHost,
-	"n=s" => \$strVHost,		"node=s" => \$strVHost,
-	"u=s" => \$strUser,		"user=s" => \$strUser,
-	"p=s" => \$strPassword,		"password=s" => \$strPassword,
-	"o=s" => \$strOption,		"option=s" => \$strOption,
-	"s=s" => \$strSuboption,	"suboption=s" => \$strSuboption,
-	"w=s" => \$strWarning,		"warning=s" => \$strWarning,
-	"c=s" => \$strCritical,		"critical=s" => \$strCritical,
-	"m=s" => \$strModifier,		"modifier=s" => \$strModifier,
-	"r=s" => \$strReport,		"report=s" => \$strReport,
+	"hostname|H=s" => \$strHost,
+	"node|n=s" => \$strVHost,
+	"user|u=s" => \$strUser,
+	"password|p=s" => \$strPassword,
+	"option|o=s" => \$strOption,
+	"suboption|s=s" => \$strSuboption,
+	"warning|w=s" => \$strWarning,
+	"critical|c=s" => \$strCritical,
+	"modifier|m=s" => \$strModifier,
+	"report|r=s" => \$strReport,
 	"verbose" => \$verbose,
 	"debug" => \$debug,
 	"trace" => \$trace,
 );
 
 # Print help if a required field is not entered or if help is requested.
-if (!($strHost || $strUser || $strPassword || $strOption)) {
+unless ($strHost && $strUser && $strPassword && $strOption) {
 	print "A required option is not set!\n";
 	help();
 }
@@ -2219,208 +2225,20 @@ if (!($nahResponse->child_get_string("is-clustered"))) {
 	exit 3;
 }
 
-# Declare output variables.
-my ($intState, $strOutput);
-
-# Select the requested option and run the necessary function to calculate its health.
-# Note: I've just commented the first option as they are all the same in terms of process order.
-if ($strOption eq "volume_health") {
-	# * COMPLETE % TESTED
-	# Space used, Inode used, offline
-
-	# Request the information required to calculate the health of the related object from the filer.
-	my $hrefVolInfo = get_volume_space($nahStorage, $strVHost);
-
-	# If a modifier has been applied to the users request then filter out the unrequired objects.
-	if (defined($strModifier)) {
-		$hrefVolInfo = filter_object($hrefVolInfo, $strModifier);
-	}
-
-	# Calculate the resulting health of the retrieved objects based on the metrics provided by the user (or in some cases the pre-defined metrics in the script).
-	if (!(defined($strWarning))) {
-		$strWarning="80%";
-	}
-
-	if (!(defined($strCritical))) {
-		$strCritical="95%";
-	}
-
-	($intState, $strOutput) = calc_space_health($hrefVolInfo, $strWarning, $strCritical);
-} elsif ($strOption eq "aggregate_health") {
-	# * COMPLETE % TESTED
-	# Space used, Inodes used, offline, is-home
-	my $hrefAggInfo = get_aggregate_space($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefAggInfo = filter_object($hrefAggInfo, $strModifier);
-	}
-
-	if (!(defined($strWarning))) {
-		$strWarning="80%";
-	}
-
-	if (!(defined($strCritical))) {
-		$strCritical="95%";
-	}
-	($intState, $strOutput) = calc_space_health($hrefAggInfo, $strWarning, $strCritical);
-} elsif ($strOption eq "snapshot_health") {
-	# * COMPLETE % TESTED
-	# Space used, Inode used, offline
-	my $hrefSnapInfo = get_snap_space($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefSnapInfo = filter_object($hrefSnapInfo, $strModifier);
-	}
-
-	if (!(defined($strWarning))) {
-		$strWarning="80%";
-	}
-
-	if (!(defined($strCritical))) {
-		$strCritical="95%";
-	}
-	($intState, $strOutput) = calc_space_health($hrefSnapInfo, $strWarning, $strCritical);
-}  elsif ($strOption eq "quota_health") {
-	# * COMPLETE
-	# quota used, files used
-	my $hrefQuotaInfo = get_quota_space($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefQuotaInfo = filter_object($hrefQuotaInfo, $strModifier);
-	}
-
-	if (!(defined($strWarning))) {
-		$strWarning="80%";
-	}
-
-	if (!(defined($strCritical))) {
-		$strCritical="95%";
-	}
-	($intState, $strOutput) = calc_quota_health($hrefQuotaInfo, $strWarning, $strCritical);
-} elsif ($strOption eq "snapmirror_health") {
-	# * COMPLETE % TESTED
-	# Snapmirror lag time, health
-	my $hrefSMInfo = get_snapmirror_lag($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefSMInfo = filter_object($hrefSMInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_snapmirror_health($hrefSMInfo, $strWarning, $strCritical);
-} elsif ($strOption eq "filer_hardware_health") {
-	# * COMPLETE
-	# Filer fan failure, Filer power supply failure, Filer temperature health, Filer battery failure
-
-	my $hrefFilerHWInfo = get_filer_hardware($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefFilerHWInfo = filter_object($hrefFilerHWInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_filer_hardware_health($hrefFilerHWInfo, $strWarning, $strCritical);
-
-} elsif ($strOption eq "interface_health") {
-	# * COMPLETE
-	# LIF status, LIF is on home node, LIF on home port
-
-	my $hrefInterfaceInfo = get_interface_health($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefInterfaceInfo = filter_object($hrefInterfaceInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_interface_health($hrefInterfaceInfo, $strWarning, $strCritical, $strSuboption, $strReport);
-
-} elsif ($strOption eq "port_health") {
-	# * COMPLETE
-	# Port status
-
-	my $hrefPortInfo = get_port_health($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefPortInfo = filter_object($hrefPortInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_interface_health($hrefPortInfo, $strWarning, $strCritical);
-
-} elsif ($strOption eq "netapp_alarms") {
-	# * COMPLETE
-	# Diagnostic and dashboard alarms
-
-	# Ontapi > 9 does not support dashboard any more
-	if ($intOntapiVersion >= 900) {
-		$intState = 0;
-		$strOutput = "OK: Ontapi >9 does not support dashboard and dashboard alarms any more.";
-	} else {
-		my $hrefAlarmInfo = get_netapp_alarms($nahStorage, $strVHost);
-
-		if (defined($strModifier)) {
-			$hrefAlarmInfo = filter_object($hrefAlarmInfo, $strModifier);
-		}
-
-		($intState, $strOutput) = calc_netapp_alarm_health($hrefAlarmInfo, $strWarning, $strCritical);
-	}
-} elsif ($strOption eq "vscan_health") {
-	# * COMPLETE
-	# Vscan status
-
-	my $hrefVscanInfo = get_vscan_info($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefVscanInfo = filter_object($hrefVscanInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_vscan_health($hrefVscanInfo, $strWarning, $strCritical);
-} elsif ($strOption eq "cluster_health") {
-	# * COMPLETE
-	# Cluster health
-
-	my $hrefClusterInfo = get_cluster_health($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefClusterInfo = filter_object($hrefClusterInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_cluster_health($hrefClusterInfo, $strWarning, $strCritical);
-} elsif ($strOption eq "clusternode_health") {
-	# * COMPLETE
-	# Cluster Node health
-
-	my $hrefClusterNodeInfo = get_cluster_node_health($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefClusterNodeInfo = filter_object($hrefClusterNodeInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_cluster_node_health($hrefClusterNodeInfo, $strWarning, $strCritical);
-} elsif ($strOption eq "disk_health") {
-	# * COMPLETE
-	# Disk health -wc ????
-
-	my $hrefDiskInfo = get_disk_info($nahStorage, $strVHost);
-
-	if (defined($strModifier)) {
-		$hrefDiskInfo = filter_object($hrefDiskInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_disk_health($hrefDiskInfo);
-} elsif ($strOption eq "disk_spare") {
-	$strWarning  //= 2;
-	$strCritical //= 1;
-
-	my $hrefSpareInfo = get_spare_info($nahStorage, $strVHost, $strWarning, $strCritical);
-
-	if (defined($strModifier)) {
-		$hrefSpareInfo = filter_object($hrefSpareInfo, $strModifier);
-	}
-
-	($intState, $strOutput) = calc_spare_health($hrefSpareInfo, $strVHost, $strWarning, $strCritical);
-}
-
-## FUTURE STUFF----
-# DISK IO, DE-DUPE LAG
+my $checkfunc = $CHECKS{ $strOption } or die "Unknown check '$strOption'";
+my ($intState, $strOutput) = $checkfunc->(
+    {
+        modifier => $strModifier,
+        warn => $strWarning,
+        crit => $strCritical,
+        subopt => $strSuboption,
+        report => $strReport,
+        storage => $nahStorage,
+        vhost => $strVHost,
+        apiver => $intOntapiVersion
+    }
+);
 
 # Print the output and exit with the resulting state.
-$strOutput .= "\n";
-print $strOutput;
+print "$strOutput\n";
 exit $intState;
