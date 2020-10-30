@@ -1266,6 +1266,14 @@ sub get_quota_space {
 			if ($nahQuota->child_get_string("tree") ne "") {
 				$strQuotaName = $strQuotaName . "/" . $nahQuota->child_get_string("tree");
 			}
+			
+			if ($nahQuota->child_get_string('quota-type') eq 'user') {
+				if ($nahQuota->child_get('quota-users')) {
+					foreach my $quotaUser ($nahQuota->child_get('quota-users')->children_get()) {
+						$strQuotaName .= ":".$quotaUser->child_get_string('quota-user-name');
+					}
+				}
+			}
 
 			$hshQuotaUsage{$strQuotaName}{'sub'} = "get_quota_space";
 			$hshQuotaUsage{$strQuotaName}{'space-hard-limit'} = $nahQuota->child_get_string("disk-limit");
@@ -1295,16 +1303,7 @@ sub calc_quota_health {
 		my $intUsedToBytes = $hrefQuotaInfo->{$strQuota}->{'space-used'}*1024;
 		my $strReadableUsed = space_to_human_readable($intUsedToBytes);
 
-		if ($hrefQuotaInfo->{$strQuota}->{'space-hard-limit'} ne "-") {
-			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-hard-limit'}) {
-				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-hard-limit'});
-				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-hard-limit'}*1024;
-		my $strReadableThresh = space_to_human_readable($intThreshToBytes);
-				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
-				$strOutput = get_nagios_description($strOutput, $strNewMessage);
-		$intState = get_nagios_state($intState, 2);
-			}
-		} elsif ($hrefQuotaInfo->{$strQuota}->{'space-threshold'} ne "-") {
+		if ($hrefQuotaInfo->{$strQuota}->{'space-threshold'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-threshold'}) {
 				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-threshold'});
 				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-threshold'}*1024;
@@ -1313,7 +1312,8 @@ sub calc_quota_health {
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
 		$intState = get_nagios_state($intState, 2);
 			}
-		} elsif ($hrefQuotaInfo->{$strQuota}->{'space-soft-limit'} ne "-") {
+		}
+		if ($hrefQuotaInfo->{$strQuota}->{'space-soft-limit'} ne "-") {
 			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-soft-limit'}) {
 				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-soft-limit'});
 				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-soft-limit'}*1024;
@@ -1321,6 +1321,16 @@ sub calc_quota_health {
 				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
 				$strOutput = get_nagios_description($strOutput, $strNewMessage);
 				$intState = get_nagios_state($intState, 1);
+			}
+		}
+		if ($hrefQuotaInfo->{$strQuota}->{'space-hard-limit'} ne "-") {
+			if ($hrefQuotaInfo->{$strQuota}->{'space-used'} >= $hrefQuotaInfo->{$strQuota}->{'space-hard-limit'}) {
+				# my $intThreshToBytes = space_to_bytes($hrefQuotaInfo->{$strQuota}->{'space-hard-limit'});
+				my $intThreshToBytes = $hrefQuotaInfo->{$strQuota}->{'space-hard-limit'}*1024;
+		my $strReadableThresh = space_to_human_readable($intThreshToBytes);
+				my $strNewMessage = $strQuota . " - " . $strReadableUsed . "/" . $strReadableThresh . " SPACE USED";
+				$strOutput = get_nagios_description($strOutput, $strNewMessage);
+		$intState = get_nagios_state($intState, 2);
 			}
 		}
 
