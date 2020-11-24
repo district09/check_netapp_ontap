@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # Script name:      check_netapp_ontap.pl
-# Version:          v3.03.200924
+# Version:          v3.04.201124
 # Original author:  Murphy John
 # Current author:   D'Haese Willem
 # Contributors:     Yip Wai Peng, Anriot Alexandre, Charton Yannick, Goetheyn Tony, Malone Josh
@@ -1661,6 +1661,7 @@ sub calc_space_health {
 	}
 
 
+
 	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
 		$strOutput = "OK - No problem found ($intObjectCount checked)";
@@ -1671,12 +1672,16 @@ sub calc_space_health {
 	}
 
 
+
 	return $intState, $strOutput;
 }
 
 sub space_threshold_helper {
 	# Test the various monitored object values against the thresholds provided by the user.
 	my ($intState, $strOutput, $hrefVolInfo, $hrefThresholds, $perfOutput, $intAlertLevel) = @_;
+
+					 
+							 
 
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
@@ -1794,6 +1799,11 @@ sub space_threshold_helper {
 			}
 		}
 	}
+
+						   
+											 
+								  
+  
 
 	return $intState, $strOutput, $hrefVolInfo;
 }
@@ -2412,9 +2422,6 @@ if ($strOption eq "volume_health") {
 
 	($intState, $strOutput) = calc_spare_health($hrefSpareInfo, $strVHost, $strWarning, $strCritical);
 }
-
-## FUTURE STUFF----
-# DISK IO, DE-DUPE LAG
 
 # Print the output and exit with the resulting state.
 $strOutput .= "\n";
