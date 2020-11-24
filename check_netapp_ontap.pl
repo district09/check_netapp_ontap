@@ -50,7 +50,7 @@ sub get_disk_info {
 		$nahDiskIterator->child_add($nahQuery);
 		$nahQuery->child_add($nahDiskInfo);
 		$nahDiskInfo->child_add($nahDiskOwnerInfo);
-		$nahDiskOwnerInfo->child_add_string("home-node", $strVHost);
+		$nahDiskOwnerInfo->child_add_string("home-node-name", $strVHost);
 	}
 
 	while(defined($strActiveTag)) {
@@ -185,7 +185,7 @@ sub get_spare_info {
 		$nahSpareIterator->child_add($nahQuery);
 		$nahQuery->child_add($nahSpareInfo);
 		$nahSpareInfo->child_add($nahSpareOwnerInfo);
-		$nahSpareOwnerInfo->child_add_string("home-node", $strVHost);
+		$nahSpareOwnerInfo->child_add_string("home-node-name", $strVHost);
 	}
 
 	while(defined($strActiveTag)) {
@@ -1518,6 +1518,7 @@ sub get_volume_space {
 	my $nahTag = NaElement->new("tag");
 	my $strActiveTag = "";
 	my %hshVolUsage;
+	my $volAutoSizeAttr;
 
 	# Narrow search to only the requested node if configured by user with the -n option
 	if (defined($strVHost)) {
@@ -1570,7 +1571,12 @@ sub get_volume_space {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
 			} else {
 				$hshVolUsage{$strVolName}{'state'} = $nahVol->child_get("volume-state-attributes")->child_get_string("state");
-				$hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-total");
+				$volAutoSizeAttr = $nahVol->child_get('volume-autosize-attributes');
+				if (defined($volAutoSizeAttr) && $volAutoSizeAttr->child_get_string('mode') =~ m/^grow(?:_shrink)$/) {
+					$hshVolUsage{$strVolName}{'space-total'} = $volAutoSizeAttr->child_get_string("maximum-size");
+				} else {
+					$hshVolUsage{$strVolName}{'space-total'} = $nahVol->child_get("volume-space-attributes")->child_get_string("size-total");
+				}
 				if ($debug) {
 					if ( $hshVolUsage{$strVolName}{'space-total'} == 0 || $hshVolUsage{$strVolName}{'space-total'} eq '0' ) {
 						print "Volume $strVolName reports size-total of 0\n";
@@ -1598,7 +1604,7 @@ sub calc_space_health {
 	my $intState = 0;
 	my $intObjectCount = 0;
 	my $strOutput;
-	my $perfOutput;
+	my %perfOutput = ();
 	my $hrefObjectState;
 
 	foreach my $strObj (keys %$hrefSpaceInfo) {
@@ -1650,10 +1656,9 @@ sub calc_space_health {
 
 	# Test to see if the monitored object has crossed a defined space threshhold.
 	unless ( (defined($hrefCritThresholds->{'strings'}) && @{$hrefCritThresholds->{'strings'}}) || (defined($hrefWarnThresholds->{'strings'}) && @{$hrefWarnThresholds->{'strings'}}) || $hrefWarnThresholds->{'owner'} || $hrefCritThresholds->{'owner'} ) {
-		($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, 2);
-		($intState, $strOutput, $perfOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, 1);
+		($intState, $strOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefCritThresholds, \%perfOutput, 2);
+		($intState, $strOutput, $hrefSpaceInfo) = space_threshold_helper($intState, $strOutput, $hrefSpaceInfo, $hrefWarnThresholds, \%perfOutput, 1);
 	}
-
 
 
 	# If everything looks ok and no output has been defined then set the message to display OK.
@@ -1661,10 +1666,9 @@ sub calc_space_health {
 		$strOutput = "OK - No problem found ($intObjectCount checked)";
 	}
 
-	if ((defined($perfOutput))) {
-		$strOutput .= $perfOutput;
+	if (keys(%perfOutput) > 0) {
+		$strOutput .= ("\n| " . join(' ', values(%perfOutput)));
 	}
-
 
 
 	return $intState, $strOutput;
@@ -1672,10 +1676,7 @@ sub calc_space_health {
 
 sub space_threshold_helper {
 	# Test the various monitored object values against the thresholds provided by the user.
-	my ($intState, $strOutput, $hrefVolInfo, $hrefThresholds, $intAlertLevel) = @_;
-
-	my $perfOutput = "";
-	my $perfOutputFinal = " | ";
+	my ($intState, $strOutput, $hrefVolInfo, $hrefThresholds, $perfOutput, $intAlertLevel) = @_;
 
 	foreach my $strVol (keys %$hrefVolInfo) {
 		my $bMarkedForRemoval = 0;
@@ -1702,8 +1703,8 @@ sub space_threshold_helper {
 				my $strReadableTotal = space_to_human_readable($hrefVolInfo->{$strVol}->{'space-total'});
 				my $strNewMessage = $strVol . " - " . $strReadableUsed . "/" . $strReadableTotal . " (" . $intUsedPercent . "%) SPACE USED";
 
-				if ($intAlertLevel == 1) {
-					$perfOutput .= "'" . $strVol . "_usage'=" . $hrefVolInfo->{$strVol}->{'space-used'} . "B;;;0;" . $hrefVolInfo->{$strVol}->{'space-total'} . " ";
+				if (!exists($perfOutput->{"space-$strVol"})) {
+					$perfOutput->{"space-$strVol"} = "'" . $strVol . "_usage'=" . $hrefVolInfo->{$strVol}->{'space-used'} . "B;;;0;" . $hrefVolInfo->{$strVol}->{'space-total'};
 				}
 
 				if (defined($hrefThresholds->{'space-percent'}) && defined($hrefThresholds->{'space-count'})) {
@@ -1749,8 +1750,8 @@ sub space_threshold_helper {
 				$intUsedPercent = floor($intUsedPercent + 0.5);
 				my $strNewMessage = $strVol . " - " . $hrefVolInfo->{$strVol}->{'inodes-used'} . "/" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " (" . $intUsedPercent . "%) INODES USED";
 
-				if ($intAlertLevel == 1) {
-					$perfOutput .= "'" . $strVol . "_inodes'=" . $hrefVolInfo->{$strVol}->{'inodes-used'} . "B;;;0;" . $hrefVolInfo->{$strVol}->{'inodes-total'} . " ";
+				if (!exists($perfOutput->{"inodes-$strVol"})) {
+					$perfOutput->{"inodes-$strVol"} = "'" . $strVol . "_inodes'=" . $hrefVolInfo->{$strVol}->{'inodes-used'} . "B;;;0;" . $hrefVolInfo->{$strVol}->{'inodes-total'};
 				}
 
 				if (defined($hrefThresholds->{'inodes-percent'}) && defined($hrefThresholds->{'inodes-count'})) {
@@ -1794,12 +1795,7 @@ sub space_threshold_helper {
 		}
 	}
 
-	if ($intAlertLevel == 1) {
-		#print "perfOutput: " . $perfOutput . "\n";
-		$perfOutputFinal .= $perfOutput;
-	}
-
-	return $intState, $strOutput, $perfOutputFinal, $hrefVolInfo;
+	return $intState, $strOutput, $hrefVolInfo;
 }
 
 sub space_threshold_converter {
