@@ -667,6 +667,7 @@ sub get_cluster_health {
 	my $nahClusterInfo = NaElement->new("cluster-peer-health-info");
 	my $strActiveTag = "";
 	my %hshClusterInfo;
+	my %reachableClusters;
 
 	if (defined($strVHost)) {
 		$nahClusterIterator->child_add($nahQuery);
@@ -690,11 +691,23 @@ sub get_cluster_health {
 		}
 
 		foreach my $nahNode ($nahResponse->child_get("attributes-list")->children_get()) {
-			my $strName = $nahNode->child_get_string("originating-node");
-			$hshClusterInfo{$strName}{'destination'} = $nahNode->child_get_string("destination-node");
+			my $originNode = $nahNode->child_get_string("originating-node");
+			my $destinationNode = $nahNode->child_get_string("destination-node");
+			my $destinationCluster = $nahNode->child_get_string("destination-cluster");
+			my $strName = "${originNode}_${destinationNode}";
+			$hshClusterInfo{$strName}{'origin'} = $originNode;
+			$hshClusterInfo{$strName}{'destination'} = $destinationNode;
+			$hshClusterInfo{$strName}{'destination-cluster'} = $destinationCluster;
 			$hshClusterInfo{$strName}{'cluster-healthy'} = $nahNode->child_get_string("is-cluster-healthy");
 			$hshClusterInfo{$strName}{'destination-available'} = $nahNode->child_get_string("is-destination-node-available");
 			$hshClusterInfo{$strName}{'in-quorum'} = $nahNode->child_get_string("is-node-healthy");
+			$reachableClusters{$destinationCluster} = $hshClusterInfo{$strName}{'destination-available'} eq 'true' ? 1 : 0;
+		}
+	}
+	# Mark partially unreachable peers
+	foreach (keys %hshClusterInfo) {
+		if ($hshClusterInfo{$_}{'destination-available'} eq 'false' and $reachableClusters{$hshClusterInfo{$_}->{'destination-cluster'}} == 1) {
+			$hshClusterInfo{$_}{'destination-available'} = 'partial';
 		}
 	}
 
@@ -710,17 +723,21 @@ sub calc_cluster_health {
 	foreach my $strNode (keys %$hrefClusterInfo) {
 		$intObjectCount = $intObjectCount + 1;
 		if ($hrefClusterInfo->{$strNode}->{'destination-available'} eq "false") {
-			my $strNewMessage = $strNode . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " destination node is unavailable";
+			my $strNewMessage = $hrefClusterInfo->{$strNode}->{'origin'} . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " destination node is unavailable";
 			$strOutput = get_nagios_description($strOutput, $strNewMessage);
 			$intState = get_nagios_state($intState, 2);
 		} elsif ($hrefClusterInfo->{$strNode}->{'in-quorum'} eq "false") {
-			my $strNewMessage = $strNode . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " originating node is not in quorum";
+			my $strNewMessage = $hrefClusterInfo->{$strNode}->{'origin'} . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " originating node is not in quorum";
 			$strOutput = get_nagios_description($strOutput, $strNewMessage);
 			$intState = get_nagios_state($intState, 2);
 		} elsif ($hrefClusterInfo->{$strNode}->{'cluster-healthy'} eq "false") {
-			my $strNewMessage = $strNode . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " cluster peer relationship is unhealthy";
+			my $strNewMessage = $hrefClusterInfo->{$strNode}->{'origin'} . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " cluster peer relationship is unhealthy";
 			$strOutput = get_nagios_description($strOutput, $strNewMessage);
 			$intState = get_nagios_state($intState, 2);
+		} elsif ($hrefClusterInfo->{$strNode}->{'destination-available'} eq "partial") {
+			my $strNewMessage = $hrefClusterInfo->{$strNode}->{'origin'} . "->" . $hrefClusterInfo->{$strNode}->{'destination'} . " destination node is partially unavailable";
+			$strOutput = get_nagios_description($strOutput, $strNewMessage);
+			$intState = get_nagios_state($intState, 1);
 		}
 	}
 
