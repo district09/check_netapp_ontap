@@ -39,15 +39,16 @@ Copy `check_netapp_ontap.pl` script to your nagios libexec folder and configure 
 
 **Parameters:**
 
-* –hostname, -H => Hostname or address of the cluster administrative interface.
-* –node, -n => Name of a vhost or cluster-node to restrict this query to.
-* –user, -u => Username of a Netapp Ontapi enabled user.
-* –password, -p => Password for the netapp Ontapi enabled user.
-* –option, -o => The name of the option you want to check. See the option and threshold list at the bottom of this help text.
-* –warning, -w => A custom warning threshold value. See the option and threshold list at the bottom of this help text.
-* –critical, -c => A custom warning threshold value. See the option and threshold list at the bottom of this help text.
-* –modifier, -m => This modifier is used to set an inclusive or exclusive filter on what you want to monitor.
-* –help, -h => Display this help text.
+* --hostname, -H => Hostname or address of the cluster administrative interface.
+* --node, -n => Name of a vhost or cluster-node to restrict this query to.
+* --user, -u => Username of a Netapp Ontapi enabled user.
+* --password, -p => Password for the netapp Ontapi enabled user.
+* --option, -o => The name of the option you want to check. See the option and threshold list at the bottom of this help text.
+* --suboption, -s => If available for the option, specifies the list of checks to perform.
+* --warning, -w => A custom warning threshold value. See the option and threshold list at the bottom of this help text.
+* --critical, -c => A custom warning threshold value. See the option and threshold list at the bottom of this help text.
+* --modifier, -m => This modifier is used to set an inclusive or exclusive filter on what you want to monitor.
+* --help, -h => Display this help text.
 
 ### Options
 
