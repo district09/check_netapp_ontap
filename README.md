@@ -1,3 +1,5 @@
+**NetApp ONTAPI (ZAPI) will reach end of availability (EOA) in January 2023. For customers using ONTAPI to automate ONTAP data storage management tasks, ONTAP 9.12.1 software—which is expected to release in the fourth quarter (Q4) of calendar year 2022—will be the final version to support ONTAPI. The subsequent release, ONTAP 9.13.1, which is targeted for Q2 of calendar year 2023, will remove ONTAPI support from the product."**
+
 # Nagios plugin to check health of a NetApp Ontap cluster
 
 ## Idea
@@ -7,7 +9,7 @@ snapshot, quota, snapmirror, filer hardware, port, interface cluster and disk he
 
 ## Status
 
-Production ready.
+Deprecated.
 
 ## How To
 
