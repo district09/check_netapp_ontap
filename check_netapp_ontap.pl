@@ -32,6 +32,7 @@ my $trace = undef;
 if ($verbose || $debug || $trace) {
 	use Data::Dumper;
 }
+my $lineFeed = undef;
 
 ##############################################
 ## DISK HEALTH
@@ -1161,6 +1162,7 @@ sub calc_snapmirror_health {
 	my $intState = 0;
 	my $intObjectCount = 0;
 	my $strOutput;
+	my %perfOutput = ();
 
 	foreach my $strSM (keys %$hrefSMInfo) {
 		$intObjectCount = $intObjectCount + 1;
@@ -1189,12 +1191,17 @@ sub calc_snapmirror_health {
 				$intState = get_nagios_state($intState, 1);
 			}
 		}
+		$perfOutput{"snapmirror-$strSM"} = "'" . $strSM . "_snapmirror'=" . $hrefSMInfo->{$strSM}->{'lag'} . "s;" . $hrefWarnThresholds->{'lag-time'} . ";" . $hrefCritThresholds->{'lag-time'} . ";;";
 	}
 
 	# If everything looks ok and no output has been defined then set the message to display OK.
 	if (!(defined($strOutput))) {
 		$strOutput = "OK - No problem found ($intObjectCount checked)";
 	}
+
+        if (keys(%perfOutput) > 0) {
+                $strOutput .= ("\n| " . join(' ', values(%perfOutput)));
+        }
 
 	return $intState, $strOutput;
 }
@@ -1970,6 +1977,8 @@ sub help {
 	This modifier is used to set an inclusive or exclusive filter on what you want to monitor.
 --report, -r
 	The output format. Can be "short", "long" (default), or "html"
+--linefeed, -l
+	Use linefeed for object separation instead of comma (requires nagios 3.x or later)
 --verbose, --debug, --trace
 	Debug output options
 --help, -h
@@ -2104,7 +2113,7 @@ sub get_nagios_description {
 	if (!(defined($strOutput))) {
 		$strOutput = $strNewMessage;
 	} else {
-		$strOutput .= ", " . $strNewMessage;
+		$strOutput .= (defined $lineFeed ? "\n" : ", ") . $strNewMessage;
 	}
 
 	return $strOutput;
@@ -2214,6 +2223,7 @@ GetOptions(
 	"c=s" => \$strCritical,		"critical=s" => \$strCritical,
 	"m=s" => \$strModifier,		"modifier=s" => \$strModifier,
 	"r=s" => \$strReport,		"report=s" => \$strReport,
+	"l"   => \$lineFeed,		"linefeed" => \$lineFeed,
 	"verbose" => \$verbose,
 	"debug" => \$debug,
 	"trace" => \$trace,
